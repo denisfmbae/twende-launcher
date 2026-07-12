@@ -1,0 +1,66 @@
+package co.nedlink.twende.vm
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import co.nedlink.twende.data.bt.BtStatusRepository
+import co.nedlink.twende.data.carlink.CarLinkBridge
+import co.nedlink.twende.data.location.HeadingProvider
+import co.nedlink.twende.data.obd.ObdRepository
+import co.nedlink.twende.data.poi.PoiRepository
+import co.nedlink.twende.data.prefs.PrefsRepository
+import co.nedlink.twende.model.BtState
+import co.nedlink.twende.model.Poi
+import co.nedlink.twende.model.Prefs
+import co.nedlink.twende.model.Telemetry
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import javax.inject.Inject
+
+/**
+ * Every stream uses WhileSubscribed: the moment HomeScreen leaves composition
+ * (user launched Maps), upstream sensors/BT/OBD collectors stop within 2s.
+ * Combined with the ProcessLifecycleOwner gate in TwendeApp, background cost
+ * rounds to zero.
+ */
+@HiltViewModel
+class VehicleViewModel @Inject constructor(
+    obd: ObdRepository,
+    heading: HeadingProvider,
+    bt: BtStatusRepository,
+    prefsRepo: PrefsRepository,
+    private val poiRepo: PoiRepository,
+) : ViewModel() {
+
+    private fun <T> kotlinx.coroutines.flow.Flow<T>.hot(initial: T): StateFlow<T> =
+        stateIn(viewModelScope, SharingStarted.WhileSubscribed(2000), initial)
+
+    val telemetry: StateFlow<Telemetry> = obd.telemetry.hot(Telemetry())
+    val headingDeg: StateFlow<Float> = heading.heading.hot(0f)
+    val btState: StateFlow<BtState> = bt.state.hot(BtState())
+    val carLink = CarLinkBridge.state
+    val prefs: StateFlow<Prefs> = prefsRepo.prefs.hot(Prefs())
+    private val location = heading.location.hot(null)
+
+    val pois = MutableStateFlow<List<Poi>>(emptyList())
+    val searching = MutableStateFlow(false)
+
+    fun searchPois() {
+        viewModelScope.launch {
+            searching.value = true
+            val loc = location.value
+            pois.value = poiRepo.search(
+                lat = loc?.latitude ?: 0.047,      // Meru fallback until first GPS fix
+                lng = loc?.longitude ?: 37.649,
+                fuelPct = telemetry.value.fuelPct,
+                hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
+                apiKey = prefs.value.placesKey,
+            )
+            searching.value = false
+        }
+    }
+}

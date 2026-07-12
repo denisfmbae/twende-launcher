@@ -1,0 +1,204 @@
+package co.nedlink.twende.ui.home
+
+import android.graphics.Bitmap
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.nedlink.twende.model.AppEntry
+import co.nedlink.twende.ui.theme.CosmicBackground
+import co.nedlink.twende.ui.theme.Twende
+import co.nedlink.twende.ui.theme.glass
+import co.nedlink.twende.ui.theme.neonStyle
+import co.nedlink.twende.vm.LauncherViewModel
+import co.nedlink.twende.vm.VehicleViewModel
+import kotlinx.coroutines.delay
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import kotlin.math.abs
+
+@Composable
+fun HomeScreen(
+    vehicle: VehicleViewModel = hiltViewModel(),
+    launcher: LauncherViewModel = hiltViewModel(),
+) {
+    val telemetry by vehicle.telemetry.collectAsStateWithLifecycle()
+    val heading by vehicle.headingDeg.collectAsStateWithLifecycle()
+    val bt by vehicle.btState.collectAsStateWithLifecycle()
+    val carLink by vehicle.carLink.collectAsStateWithLifecycle()
+    val prefs by vehicle.prefs.collectAsStateWithLifecycle()
+    val pois by vehicle.pois.collectAsStateWithLifecycle()
+    val searching by vehicle.searching.collectAsStateWithLifecycle()
+    val apps by launcher.apps.collectAsStateWithLifecycle()
+
+    Box(Modifier.fillMaxSize()) {
+        CosmicBackground()
+        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
+
+            TopStatusBar(
+                bt = bt.hfpConnected || bt.a2dpConnected,
+                btLabel = bt.deviceName?.let { n -> bt.batteryPct?.let { "$n · $it%" } ?: n } ?: "Not connected",
+                carLink = carLink.connected,
+                glow = prefs.glowIntensity,
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                TelemetryCluster(telemetry, prefs.metricUnits, prefs.glowIntensity, Modifier.weight(0.30f))
+                Box(Modifier.weight(0.40f), contentAlignment = Alignment.Center) {
+                    CompassWidget(heading, prefs.glowIntensity)
+                }
+                Column(Modifier.weight(0.30f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ConnCard("BLUETOOTH", bt.deviceName ?: "Device not connected",
+                        active = bt.hfpConnected || bt.a2dpConnected,
+                        detail = listOfNotNull(
+                            if (bt.hfpConnected) "Calls" else null,
+                            if (bt.a2dpConnected) "Audio" else null,
+                            bt.batteryPct?.let { "$it% batt" },
+                        ).joinToString(" · ").ifEmpty { "—" })
+                    ConnCard("CAR LINK 2.0", carLink.peer ?: "Device not connected",
+                        active = carLink.connected, detail = if (carLink.connected) "Mirroring" else "Waiting")
+                    PoiSearchBar(pois, searching, onOpen = vehicle::searchPois)
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            CommuterDock(apps = launcher.commuterApps.ifEmpty { apps.take(8) }, onLaunch = launcher::launch)
+        }
+    }
+}
+
+/* ---------- top bar ---------- */
+
+@Composable
+private fun TopStatusBar(bt: Boolean, btLabel: String, carLink: Boolean, glow: Float) {
+    val time by produceState(initialValue = LocalDateTime.now()) {
+        while (true) { value = LocalDateTime.now(); delay(1000) }
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(time.format(DateTimeFormatter.ofPattern("HH:mm")), style = neonStyle(Twende.Cyan, 34, glow))
+        Spacer(Modifier.width(14.dp))
+        Text(time.format(DateTimeFormatter.ofPattern("EEE d MMM")).uppercase(),
+            color = Twende.Dim, fontSize = 12.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.weight(1f))
+        StatusDot("BT", bt); Spacer(Modifier.width(12.dp))
+        StatusDot("LINK", carLink); Spacer(Modifier.width(12.dp))
+        StatusDot("REC", false) // recorder stub — wire to the unit's DVR broadcast when available
+    }
+}
+
+@Composable
+private fun StatusDot(label: String, active: Boolean) {
+    val pulse by rememberInfiniteTransition(label = "pulse").animateFloat(
+        initialValue = 0.35f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "a",
+    )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(8.dp).clip(CircleShape)
+            .background(if (active) Twende.Cyan.copy(alpha = pulse) else Color(0xFF39424D)))
+        Spacer(Modifier.width(5.dp))
+        Text(label, fontSize = 10.sp, letterSpacing = 1.5.sp,
+            color = if (active) Twende.Cyan else Twende.Dim)
+    }
+}
+
+@Composable
+private fun ConnCard(title: String, name: String, active: Boolean, detail: String) {
+    Column(Modifier.fillMaxWidth().glass(16).padding(12.dp)) {
+        Text(title, fontSize = 9.sp, letterSpacing = 2.sp, color = if (active) Twende.Cyan else Twende.Dim)
+        Text(name, fontSize = 13.sp, color = Color(0xFFE8ECF1), maxLines = 1)
+        Text(detail, fontSize = 10.sp, color = Twende.Dim, maxLines = 1)
+    }
+}
+
+/* ---------- commuter dock: snap carousel with perspective ---------- */
+
+@Composable
+private fun CommuterDock(apps: List<AppEntry>, onLaunch: (String) -> Unit) {
+    val state = rememberLazyListState()
+    Column {
+        Text("COMMUTER APPS", fontSize = 9.sp, letterSpacing = 3.sp, color = Twende.Dim,
+            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+        LazyRow(
+            state = state,
+            flingBehavior = rememberSnapFlingBehavior(lazyListState = state),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            itemsIndexed(apps, key = { _, a -> a.pkg }) { index, app ->
+                DockIcon(app, index, state, onLaunch)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DockIcon(app: AppEntry, index: Int, state: androidx.compose.foundation.lazy.LazyListState, onLaunch: (String) -> Unit) {
+    Column(
+        Modifier
+            .width(92.dp)
+            .graphicsLayer {
+                val info = state.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return@graphicsLayer
+                val viewportCenter = (state.layoutInfo.viewportStartOffset + state.layoutInfo.viewportEndOffset) / 2f
+                val d = (((info.offset + info.size / 2f) - viewportCenter) / viewportCenter).coerceIn(-1f, 1f)
+                val s = 1f - 0.14f * abs(d)
+                scaleX = s; scaleY = s
+                rotationY = -14f * d
+                alpha = 1f - 0.30f * abs(d)
+            }
+            .glass(18)
+            .clickable { onLaunch(app.pkg) }
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        val icon: Bitmap? = app.icon
+        if (icon != null) {
+            Image(
+                bitmap = icon.asImageBitmap(), contentDescription = app.label,
+                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, Twende.Cyan.copy(alpha = 0.55f), RoundedCornerShape(12.dp)),
+            )
+        } else {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Twende.Panel))
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(app.label, fontSize = 10.sp, color = Color(0xFFCBD4DC), maxLines = 1, textAlign = TextAlign.Center)
+    }
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- windowBackground painted before Compose inflates = instant first frame on cold start -->
+    <style name="Theme.Twende" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">#0B0C10</item>
+        <item name="android:statusBarColor">#0B0C10</item>
+        <item name="android:navigationBarColor">#0B0C10</item>
+    </style>
+</resources>
