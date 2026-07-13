@@ -1,0 +1,74 @@
+name: Build Twende APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: twende-neo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          build-root-directory: twende-neo
+
+      - name: Generate a sideload keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/twende.jks" \
+            -alias twende \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass twende123 -keypass twende123 \
+            -dname "CN=Nedlink Solutions, OU=Twende, O=Nedlink, L=Meru, C=KE"
+
+      - name: Build release APK
+        continue-on-error: true
+        env:
+          TWENDE_KEYSTORE: ${{ runner.temp }}/twende.jks
+          TWENDE_STORE_PASS: twende123
+          TWENDE_KEY_ALIAS: twende
+          TWENDE_KEY_PASS: twende123
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Collect APKs
+        run: |
+          mkdir -p out
+          find app/build/outputs/apk -name "*.apk" -exec cp {} out/ \;
+          ls -lh out
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: twende-apk
+          path: twende-neo/out/*.apk
+          if-no-files-found: error
+
+      - name: Publish APK as a Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Twende Launcher build ${{ github.run_number }}
+          files: twende-neo/out/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
