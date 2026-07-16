@@ -1,74 +1,56 @@
 name: Build Twende APK
-
 on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
+  push: { branches: [ main, master ] }
+  workflow_dispatch: {}
 jobs:
   apk:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    defaults:
-      run:
-        working-directory: twende-neo
-
+    permissions: { contents: write }
+    defaults: { run: { working-directory: twende-neo } }
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Gradle 8.7
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-          build-root-directory: twende-neo
-
-      - name: Generate a sideload keystore
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.7', build-root-directory: twende-neo }
+      - name: Keystore
         run: |
-          keytool -genkeypair -v \
-            -keystore "$RUNNER_TEMP/twende.jks" \
-            -alias twende \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass twende123 -keypass twende123 \
+          keytool -genkeypair -v -keystore "$RUNNER_TEMP/twende.jks" -alias twende \
+            -keyalg RSA -keysize 2048 -validity 10000 -storepass twende123 -keypass twende123 \
             -dname "CN=Nedlink Solutions, OU=Twende, O=Nedlink, L=Meru, C=KE"
-
-      - name: Build release APK
-        continue-on-error: true
+      - name: Compile
+        id: compile
         env:
           TWENDE_KEYSTORE: ${{ runner.temp }}/twende.jks
           TWENDE_STORE_PASS: twende123
           TWENDE_KEY_ALIAS: twende
           TWENDE_KEY_PASS: twende123
-        run: gradle assembleRelease --no-daemon --stacktrace
-
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Collect APKs
         run: |
-          mkdir -p out
-          find app/build/outputs/apk -name "*.apk" -exec cp {} out/ \;
-          ls -lh out
-
-      - name: Upload APKs
+          gradle assembleRelease --no-daemon --stacktrace > "$RUNNER_TEMP/build.log" 2>&1 || echo "FAILED" > "$RUNNER_TEMP/failed"
+          true
+      - name: Report
+        if: always()
+        run: |
+          echo "## Compile output (errors)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -iE "^e: |Unresolved reference|error:|Compilation error|FAILURE:|What went wrong|> Task .*FAILED|Caused by" "$RUNNER_TEMP/build.log" | head -80 >> "$GITHUB_STEP_SUMMARY" || echo "(no matches — dumping tail)" >> "$GITHUB_STEP_SUMMARY"
+          echo '--- tail ---' >> "$GITHUB_STEP_SUMMARY"
+          tail -40 "$RUNNER_TEMP/build.log" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cp "$RUNNER_TEMP/build.log" "$GITHUB_WORKSPACE/build.log" || true
+      - name: Upload log
+        if: always()
         uses: actions/upload-artifact@v4
-        with:
-          name: twende-apk
-          path: twende-neo/out/*.apk
-          if-no-files-found: error
-
-      - name: Publish APK as a Release
+        with: { name: build-log, path: build.log, if-no-files-found: warn }
+      - name: Publish if built
+        if: ${{ hashFiles('twende-neo/app/build/outputs/apk/release/*.apk') != '' }}
+        run: |
+          mkdir -p out && find app/build/outputs/apk -name '*.apk' -exec cp {} out/ \;
+      - name: Release
+        if: ${{ hashFiles('twende-neo/out/*.apk') != '' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Twende Launcher build ${{ github.run_number }}
+          tag_name: v2-build-${{ github.run_number }}
+          name: Twende v2.0.1 build ${{ github.run_number }}
           files: twende-neo/out/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
