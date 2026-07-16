@@ -66,7 +66,8 @@ class SystemShortcuts @Inject constructor(@ApplicationContext private val ctx: C
                 Intent(Intent.ACTION_DIAL),
             )),
             Item("camera", "Camera", "CAM", listOf(
-                app(Intent.CATEGORY_APP_CAMERA),
+                // Cameras are launched by action, not an app category (there is no
+                // CATEGORY_APP_CAMERA). This resolves to the default camera app.
                 Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA),
             )),
             Item("gallery", "Gallery", "PIC", listOf(
