@@ -2,50 +2,49 @@ name: Build Twende APK
 on:
   push: { branches: [ main, master ] }
   workflow_dispatch: {}
+permissions: { contents: write }
 jobs:
   apk:
     runs-on: ubuntu-latest
-    permissions: { contents: write }
-    defaults: { run: { working-directory: twende-neo } }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.7', build-root-directory: twende-neo }
+        with: { gradle-version: '8.7' }
       - name: Keystore
         run: |
           keytool -genkeypair -v -keystore "$RUNNER_TEMP/twende.jks" -alias twende \
             -keyalg RSA -keysize 2048 -validity 10000 -storepass twende123 -keypass twende123 \
-            -dname "CN=Nedlink Solutions, OU=Twende, O=Nedlink, L=Meru, C=KE"
-      - name: Compile
-        id: compile
+            -dname "CN=Nedlink, OU=Twende, O=Nedlink, L=Meru, C=KE"
+      - name: Compile and record
         env:
           TWENDE_KEYSTORE: ${{ runner.temp }}/twende.jks
           TWENDE_STORE_PASS: twende123
           TWENDE_KEY_ALIAS: twende
           TWENDE_KEY_PASS: twende123
         run: |
-          gradle assembleRelease --no-daemon --stacktrace > "$RUNNER_TEMP/build.log" 2>&1 || echo "FAILED" > "$RUNNER_TEMP/failed"
-          true
-      - name: Report
+          cd twende-neo
+          echo "pwd: $(pwd)" > "$GITHUB_WORKSPACE/BUILD_LOG.txt"
+          echo "files: $(ls)" >> "$GITHUB_WORKSPACE/BUILD_LOG.txt"
+          echo "=== gradle assembleRelease ===" >> "$GITHUB_WORKSPACE/BUILD_LOG.txt"
+          gradle assembleRelease --no-daemon --stacktrace >> "$GITHUB_WORKSPACE/BUILD_LOG.txt" 2>&1 || true
+          echo "=== apk search ===" >> "$GITHUB_WORKSPACE/BUILD_LOG.txt"
+          find app/build/outputs -name '*.apk' >> "$GITHUB_WORKSPACE/BUILD_LOG.txt" 2>&1 || echo "no apks" >> "$GITHUB_WORKSPACE/BUILD_LOG.txt"
+      - name: Commit the log back to the repo
         if: always()
         run: |
-          echo "## Compile output (errors)" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep -iE "^e: |Unresolved reference|error:|Compilation error|FAILURE:|What went wrong|> Task .*FAILED|Caused by" "$RUNNER_TEMP/build.log" | head -80 >> "$GITHUB_STEP_SUMMARY" || echo "(no matches — dumping tail)" >> "$GITHUB_STEP_SUMMARY"
-          echo '--- tail ---' >> "$GITHUB_STEP_SUMMARY"
-          tail -40 "$RUNNER_TEMP/build.log" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cp "$RUNNER_TEMP/build.log" "$GITHUB_WORKSPACE/build.log" || true
-      - name: Upload log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with: { name: build-log, path: build.log, if-no-files-found: warn }
+          cd "$GITHUB_WORKSPACE"
+          tail -c 60000 BUILD_LOG.txt > BUILD_LOG_TAIL.txt
+          git config user.name ci
+          git config user.email ci@twende
+          git add BUILD_LOG_TAIL.txt
+          git commit -m "CI build log [skip ci]" || true
+          git push || true
       - name: Publish if built
         if: ${{ hashFiles('twende-neo/app/build/outputs/apk/release/*.apk') != '' }}
         run: |
-          mkdir -p out && find app/build/outputs/apk -name '*.apk' -exec cp {} out/ \;
+          cd twende-neo && mkdir -p out && find app/build/outputs/apk -name '*.apk' -exec cp {} out/ \;
       - name: Release
         if: ${{ hashFiles('twende-neo/out/*.apk') != '' }}
         uses: softprops/action-gh-release@v2
