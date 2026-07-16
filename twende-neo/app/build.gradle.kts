@@ -12,10 +12,13 @@ android {
 
     defaultConfig {
         applicationId = "co.nedlink.twende"
-        minSdk = 28            // covers Android 9/10 budget head units
+        // 24 = Android 7.0. Budget head units very commonly run 7.1/8.1/9 while the
+        // box just says "Android System"; an APK with a higher floor fails on them
+        // with the unhelpful "There was a problem parsing the package" dialog.
+        minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 7
+        versionName = "2.0.1"
     }
 
     // Signing is driven by environment variables so CI (and your own machine) can
@@ -23,6 +26,10 @@ android {
     // Unset => release stays unsigned and only assembleDebug is installable.
     signingConfigs {
         create("sideload") {
+            // Emit both schemes: v2 covers Android 7+, v1 keeps the oldest
+            // installers happy. Costs a few KB.
+            enableV1Signing = true
+            enableV2Signing = true
             val ks = System.getenv("TWENDE_KEYSTORE")
             if (ks != null) {
                 storeFile = file(ks)
@@ -46,12 +53,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Back-ports java.time to API < 26 (the clock uses LocalDateTime).
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation(platform(libs.compose.bom))
     implementation(libs.core.ktx)
     implementation(libs.compose.ui)

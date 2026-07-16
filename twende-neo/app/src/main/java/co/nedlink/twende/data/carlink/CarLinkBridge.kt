@@ -14,7 +14,10 @@ import kotlinx.coroutines.flow.StateFlow
  * firmware (or an adb test) can drive the dashboard tile today, and the OEM
  * SDK calls slot into [attachVendorSdk] when the unit's SDK is available.
  *
- * Bench test:
+ * The receiver is exported=false (hardened): external apps can no longer spoof
+ * session state. Vendor firmware integrates in-process via [attachVendorSdk] —
+ * the OEM SDK, not a world-readable broadcast, is the real signal. For a quick
+ * local test, flip the receiver to exported="true" in the manifest temporarily:
  *   adb shell am broadcast -a co.nedlink.twende.carlink.SESSION_STATE \
  *       --ez connected true --es peer "Ned's Phone"
  */
@@ -31,9 +34,12 @@ class CarLinkBridge : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context?, intent: Intent) {
+        // Treat the peer name as untrusted input: cap length and drop control
+        // characters before it can reach the UI or logs.
+        val safePeer = intent.getStringExtra("peer")?.take(64)?.filter { !it.isISOControl() }
         _state.value = CarLinkState(
             connected = intent.getBooleanExtra("connected", false),
-            peer = intent.getStringExtra("peer"),
+            peer = safePeer,
         )
     }
 }

@@ -3,6 +3,8 @@ package co.nedlink.twende.data.obd
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
+import co.nedlink.twende.model.Dtc
+import co.nedlink.twende.model.DtcReport
 import co.nedlink.twende.model.Telemetry
 import java.util.UUID
 
@@ -36,8 +38,51 @@ class Elm327Client {
         speedKmh = pidBytes("010D", 1)?.get(0) ?: 0,
         fuelPct = pidBytes("012F", 1)?.let { it[0] * 100 / 255 } ?: 0,
         coolantC = pidBytes("0105", 1)?.let { it[0] - 40 } ?: 0,
+        batteryV = pidBytes("0142", 2)?.let { (it[0] * 256 + it[1]) / 1000f } ?: 0f,
+        throttlePct = pidBytes("0111", 1)?.let { it[0] * 100 / 255 } ?: 0,
+        engineLoadPct = pidBytes("0104", 1)?.let { it[0] * 100 / 255 } ?: 0,
         source = Telemetry.Source.ELM327,
     )
+
+    /**
+     * Mode 03 — read stored diagnostic trouble codes, plus Mode 01 PID 01 for the
+     * check-engine lamp state. This is the standard, universally supported way to
+     * ask a car why its engine light is on.
+     *
+     * Caveat kept honest: this parses a single-frame response. A car with many
+     * stored codes replies across multiple CAN frames, and some adapters format
+     * those differently — expect the first few codes to be reliable and treat a
+     * long list with suspicion.
+     */
+    fun readDtcs(): DtcReport {
+        val milOn = pidBytes("0101", 1)?.let { (it[0] and 0x80) != 0 } ?: false
+        val raw = command("03") ?: return DtcReport(scanned = true, milOn = milOn)
+        val hex = raw.uppercase().replace(Regex("[^0-9A-F]"), "")
+        val idx = hex.indexOf("43")
+        if (idx < 0) return DtcReport(scanned = true, milOn = milOn)
+
+        val payload = hex.substring(idx + 2)
+        val codes = mutableListOf<Dtc>()
+        var i = 0
+        while (i + 4 <= payload.length) {
+            val a = payload.substring(i, i + 2).toIntOrNull(16) ?: break
+            val b = payload.substring(i + 2, i + 4).toIntOrNull(16) ?: break
+            i += 4
+            if (a == 0 && b == 0) continue          // padding
+            val code = DtcCatalog.decode(a, b)
+            codes += Dtc(code, DtcCatalog.describe(code))
+        }
+        return DtcReport(scanned = true, milOn = milOn, codes = codes.distinctBy { it.code })
+    }
+
+    /**
+     * Mode 04 — clear codes. Deliberately NOT wired to a button in the UI: clearing
+     * a code doesn't fix the fault, and it also wipes the emissions readiness
+     * monitors, which can fail an inspection until the car has been driven through
+     * a full drive cycle again. Left here as a deliberate, documented seam.
+     */
+    @Suppress("unused")
+    fun clearDtcs(): Boolean = command("04")?.contains("44") == true
 
     /** Sends a PID query and extracts n data bytes after the 41xx echo. */
     private fun pidBytes(pid: String, n: Int): List<Int>? {
@@ -51,7 +96,12 @@ class Elm327Client {
         }
     }
 
-    /** Writes cmd + CR, reads until the ELM '>' prompt. */
+    /**
+     * Writes cmd + CR, reads until the ELM '>' prompt — or until [READ_TIMEOUT_MS]
+     * elapses. The timeout is a robustness/security guard: a dead or hostile dongle
+     * that never sends '>' must not hang the reader thread forever. Reads are gated
+     * on available() so a silent adapter can't block indefinitely either.
+     */
     private fun command(cmd: String): String? {
         val s = socket ?: return null
         return runCatching {
@@ -59,14 +109,23 @@ class Elm327Client {
             s.outputStream.flush()
             val sb = StringBuilder()
             val buf = ByteArray(128)
-            while (true) {
-                val read = s.inputStream.read(buf)
-                if (read < 0) break
-                sb.append(String(buf, 0, read))
-                if (sb.contains('>')) break
+            val deadline = System.currentTimeMillis() + READ_TIMEOUT_MS
+            while (System.currentTimeMillis() < deadline) {
+                if (s.inputStream.available() > 0) {
+                    val read = s.inputStream.read(buf)
+                    if (read < 0) break
+                    sb.append(String(buf, 0, read))
+                    if (sb.contains('>')) break
+                } else {
+                    Thread.sleep(5)
+                }
             }
             sb.toString()
         }.getOrNull()
+    }
+
+    private companion object {
+        const val READ_TIMEOUT_MS = 2000L
     }
 
     fun close() {

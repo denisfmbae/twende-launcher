@@ -12,13 +12,57 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" tools:targetApi="s" />
 
+    <!--
+      Android 11+ hides other packages unless we declare what we need to see.
+      A launcher must resolve LAUNCHER activities to build its drawer, and the
+      accessories rail resolves the intents below to decide which tiles are live.
+      This is the narrow, declarative alternative to QUERY_ALL_PACKAGES.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_MUSIC" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_BROWSER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_GALLERY" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_CAMERA" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="vnd.android.document/directory" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
+        </intent>
+    </queries>
+
     <application
         android:name=".TwendeApp"
         android:label="Twende Launcher"
         android:icon="@drawable/ic_launcher"
         android:theme="@style/Theme.Twende"
         android:supportsRtl="true"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false">
 
         <activity
             android:name=".MainActivity"
@@ -38,7 +82,24 @@
 
         <service android:name=".data.obd.ObdService" android:exported="false" />
 
-        <receiver android:name=".data.carlink.CarLinkBridge" android:exported="true">
+        <!--
+          Media metadata listener. exported="true" is required so the system server
+          can bind it, but it is guarded by BIND_NOTIFICATION_LISTENER_SERVICE — a
+          signature-level permission only the OS holds — so no third-party app can
+          reach it. It stays inert until you grant notification access by hand, and
+          it reads nothing: see TwendeNotificationListener.
+        -->
+        <service
+            android:name=".data.media.TwendeNotificationListener"
+            android:exported="true"
+            android:label="Twende media info"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <receiver android:name=".data.carlink.CarLinkBridge" android:exported="false">
             <intent-filter>
                 <action android:name="co.nedlink.twende.carlink.SESSION_STATE" />
             </intent-filter>

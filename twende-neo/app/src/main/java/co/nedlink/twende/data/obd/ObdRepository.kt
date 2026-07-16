@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import co.nedlink.twende.data.prefs.PrefsRepository
+import co.nedlink.twende.model.DtcReport
 import co.nedlink.twende.model.Telemetry
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +42,9 @@ class ObdRepository @Inject constructor(
     fun setAppForeground(fg: Boolean) {
         binderState.value?.setPolling(fg)
     }
+
+    /** One-shot fault-code scan. Null if the service isn't bound yet. */
+    suspend fun scanDtcs(): DtcReport? = binderState.value?.scanDtcs()
 
     val telemetry: Flow<Telemetry> = callbackFlow {
         val conn = object : ServiceConnection {

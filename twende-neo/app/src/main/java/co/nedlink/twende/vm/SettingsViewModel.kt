@@ -21,4 +21,7 @@ class SettingsViewModel @Inject constructor(private val repo: PrefsRepository) :
     fun setElmMac(v: String) = viewModelScope.launch { repo.setElmMac(v) }
     fun setPlacesKey(v: String) = viewModelScope.launch { repo.setPlacesKey(v) }
     fun setGlow(v: Float) = viewModelScope.launch { repo.setGlow(v) }
+    fun setTankLitres(v: Float) = viewModelScope.launch { repo.setTankLitres(v) }
+    fun setFuelPrice(v: Float) = viewModelScope.launch { repo.setFuelPrice(v) }
+    fun setSpeedLimit(v: Int) = viewModelScope.launch { repo.setSpeedLimit(v) }
 }

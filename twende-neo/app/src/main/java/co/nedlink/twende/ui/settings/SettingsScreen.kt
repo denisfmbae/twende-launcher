@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -18,8 +19,12 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,6 +60,27 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 placeholder = "AIza…", onChange = vm::setPlacesKey,
             )
 
+            Text("FUEL & LIMITS", fontSize = 10.sp, letterSpacing = 3.sp, color = Twende.Dim)
+
+            NumberFieldRow(
+                label = "Fuel tank size (litres) — drives range-to-empty and trip cost",
+                initial = if (p.tankLitres > 0f) p.tankLitres.toInt().toString() else "",
+                placeholder = "45",
+                onCommit = { vm.setTankLitres(it.toFloatOrNull() ?: 0f) },
+            )
+            NumberFieldRow(
+                label = "Fuel price (KES per litre) — EPRA revises this monthly",
+                initial = if (p.fuelPriceKes > 0f) p.fuelPriceKes.toInt().toString() else "",
+                placeholder = "today's pump price",
+                onCommit = { vm.setFuelPrice(it.toFloatOrNull() ?: 0f) },
+            )
+            NumberFieldRow(
+                label = "Overspeed alert (km/h) — 0 turns it off, 80 = PSV governor limit",
+                initial = if (p.speedLimitKmh > 0) p.speedLimitKmh.toString() else "",
+                placeholder = "80",
+                onCommit = { vm.setSpeedLimit(it.toIntOrNull() ?: 0) },
+            )
+
             Column(Modifier.fillMaxWidth().glass(16).padding(14.dp)) {
                 Text("Neon glow intensity", fontSize = 13.sp, color = Twende.Cyan)
                 Slider(
@@ -83,6 +109,28 @@ private fun SwitchRow(label: String, value: Boolean, onChange: (Boolean) -> Unit
         Switch(
             checked = value, onCheckedChange = onChange,
             colors = SwitchDefaults.colors(checkedTrackColor = Twende.Cyan, checkedThumbColor = Twende.Cosmic),
+        )
+    }
+}
+
+@Composable
+private fun NumberFieldRow(label: String, initial: String, placeholder: String, onCommit: (String) -> Unit) {
+    var text by remember(initial) { mutableStateOf(initial) }
+    Column(Modifier.fillMaxWidth().glass(16).padding(14.dp)) {
+        Text(label, fontSize = 11.sp, color = Twende.Dim)
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it; onCommit(it) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            placeholder = { Text(placeholder, color = Twende.Dim) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Twende.Cyan,
+                unfocusedBorderColor = Twende.Line,
+                focusedTextColor = Twende.Cyan,
+                unfocusedTextColor = Twende.Cyan,
+            ),
         )
     }
 }

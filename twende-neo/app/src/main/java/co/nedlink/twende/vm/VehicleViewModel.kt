@@ -8,7 +8,13 @@ import co.nedlink.twende.data.location.HeadingProvider
 import co.nedlink.twende.data.obd.ObdRepository
 import co.nedlink.twende.data.poi.PoiRepository
 import co.nedlink.twende.data.prefs.PrefsRepository
+import co.nedlink.twende.data.vehicle.CarBodyRepository
+import co.nedlink.twende.data.vehicle.TripComputer
+import co.nedlink.twende.model.BodyStatus
+import co.nedlink.twende.model.DtcReport
+import co.nedlink.twende.model.TripStats
 import co.nedlink.twende.model.BtState
+import co.nedlink.twende.model.Door
 import co.nedlink.twende.model.Poi
 import co.nedlink.twende.model.Prefs
 import co.nedlink.twende.model.Telemetry
@@ -29,10 +35,12 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class VehicleViewModel @Inject constructor(
-    obd: ObdRepository,
+    private val obd: ObdRepository,
     heading: HeadingProvider,
     bt: BtStatusRepository,
     prefsRepo: PrefsRepository,
+    private val body: CarBodyRepository,
+    tripComputer: TripComputer,
     private val poiRepo: PoiRepository,
 ) : ViewModel() {
 
@@ -44,6 +52,24 @@ class VehicleViewModel @Inject constructor(
     val btState: StateFlow<BtState> = bt.state.hot(BtState())
     val carLink = CarLinkBridge.state
     val prefs: StateFlow<Prefs> = prefsRepo.prefs.hot(Prefs())
+    val bodyStatus: StateFlow<BodyStatus> = body.status.hot(BodyStatus())
+    val trip: StateFlow<TripStats> = tripComputer.stats
+
+    fun toggleDoor(door: Door) = body.toggle(door)
+    fun closeAllDoors() = body.closeAll()
+
+    /* ---- check-engine (OBD-II Mode 03) ---- */
+    val dtc = MutableStateFlow(DtcReport())
+    val scanningDtc = MutableStateFlow(false)
+
+    fun scanDtcs() {
+        if (scanningDtc.value) return
+        viewModelScope.launch {
+            scanningDtc.value = true
+            dtc.value = obd.scanDtcs() ?: DtcReport(scanned = true)
+            scanningDtc.value = false
+        }
+    }
     private val location = heading.location.hot(null)
 
     val pois = MutableStateFlow<List<Poi>>(emptyList())

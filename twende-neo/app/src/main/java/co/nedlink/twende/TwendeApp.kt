@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import co.nedlink.twende.data.media.NowPlayingRepository
 import co.nedlink.twende.data.obd.ObdRepository
+import co.nedlink.twende.data.vehicle.CarBodyRepository
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -17,12 +19,22 @@ import javax.inject.Inject
 class TwendeApp : Application() {
 
     @Inject lateinit var obdRepository: ObdRepository
+    @Inject lateinit var carBodyRepository: CarBodyRepository
+    @Inject lateinit var nowPlayingRepository: NowPlayingRepository
 
     override fun onCreate() {
         super.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) = obdRepository.setAppForeground(true)
-            override fun onStop(owner: LifecycleOwner) = obdRepository.setAppForeground(false)
+            override fun onStart(owner: LifecycleOwner) {
+                obdRepository.setAppForeground(true)
+                carBodyRepository.setAppForeground(true)
+                nowPlayingRepository.setAppForeground(true)
+            }
+            override fun onStop(owner: LifecycleOwner) {
+                obdRepository.setAppForeground(false)
+                carBodyRepository.setAppForeground(false)
+                nowPlayingRepository.setAppForeground(false)
+            }
         })
     }
 }

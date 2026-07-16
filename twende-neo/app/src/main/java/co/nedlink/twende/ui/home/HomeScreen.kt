@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.shape.CircleShape
@@ -30,18 +31,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.nedlink.twende.model.Accessory
 import co.nedlink.twende.model.AppEntry
 import co.nedlink.twende.ui.theme.CosmicBackground
 import co.nedlink.twende.ui.theme.Twende
@@ -64,9 +70,15 @@ fun HomeScreen(
     val bt by vehicle.btState.collectAsStateWithLifecycle()
     val carLink by vehicle.carLink.collectAsStateWithLifecycle()
     val prefs by vehicle.prefs.collectAsStateWithLifecycle()
+    val body by vehicle.bodyStatus.collectAsStateWithLifecycle()
+    val trip by vehicle.trip.collectAsStateWithLifecycle()
+    val dtc by vehicle.dtc.collectAsStateWithLifecycle()
+    val scanningDtc by vehicle.scanningDtc.collectAsStateWithLifecycle()
     val pois by vehicle.pois.collectAsStateWithLifecycle()
     val searching by vehicle.searching.collectAsStateWithLifecycle()
     val apps by launcher.apps.collectAsStateWithLifecycle()
+    val accessories by launcher.accessories.collectAsStateWithLifecycle()
+    val nowPlaying by launcher.nowPlaying.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize()) {
         CosmicBackground()
@@ -82,9 +94,23 @@ fun HomeScreen(
             Spacer(Modifier.height(10.dp))
 
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                TelemetryCluster(telemetry, prefs.metricUnits, prefs.glowIntensity, Modifier.weight(0.30f))
-                Box(Modifier.weight(0.40f), contentAlignment = Alignment.Center) {
-                    CompassWidget(heading, prefs.glowIntensity)
+                TelemetryCluster(
+                    t = telemetry,
+                    trip = trip,
+                    metric = prefs.metricUnits,
+                    glow = prefs.glowIntensity,
+                    speedLimitKmh = prefs.speedLimitKmh,
+                    tankLitres = prefs.tankLitres,
+                    modifier = Modifier.weight(0.30f),
+                )
+                Box(Modifier.weight(0.40f)) {
+                    CarSimulationWidget(
+                        speedKmh = telemetry.speedKmh,
+                        heading = heading,
+                        body = body,
+                        glow = prefs.glowIntensity,
+                        onToggle = vehicle::toggleDoor,
+                    )
                 }
                 Column(Modifier.weight(0.30f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ConnCard("BLUETOOTH", bt.deviceName ?: "Device not connected",
@@ -100,8 +126,38 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-            CommuterDock(apps = launcher.commuterApps.ifEmpty { apps.take(8) }, onLaunch = launcher::launch)
+            Spacer(Modifier.height(8.dp))
+            VitalsStrip(
+                trip = trip,
+                t = telemetry,
+                dtc = dtc,
+                scanning = scanningDtc,
+                priceSet = prefs.fuelPriceKes > 0f,
+                onScan = vehicle::scanDtcs,
+            )
+            if (dtc.codes.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                DtcPanel(dtc)
+            }
+
+            if (nowPlaying.active) {
+                Spacer(Modifier.height(8.dp))
+                NowPlayingBar(
+                    np = nowPlaying,
+                    onPrevious = launcher::mediaPrevious,
+                    onPlayPause = launcher::mediaPlayPause,
+                    onNext = launcher::mediaNext,
+                    onGrantAccess = launcher::grantMediaAccess,
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            BottomDock(
+                apps = launcher.commuterApps.ifEmpty { apps.take(8) },
+                accessories = accessories,
+                onLaunch = launcher::launch,
+                onAccessory = launcher::openAccessory,
+            )
         }
     }
 }
@@ -149,23 +205,87 @@ private fun ConnCard(title: String, name: String, active: Boolean, detail: Strin
     }
 }
 
-/* ---------- commuter dock: snap carousel with perspective ---------- */
+/* ---------- bottom dock: APPS | ACCESSORIES, sharing one carousel ---------- */
 
 @Composable
-private fun CommuterDock(apps: List<AppEntry>, onLaunch: (String) -> Unit) {
+private fun BottomDock(
+    apps: List<AppEntry>,
+    accessories: List<Accessory>,
+    onLaunch: (String) -> Unit,
+    onAccessory: (String) -> Unit,
+) {
+    var tab by remember { mutableIntStateOf(0) }
     val state = rememberLazyListState()
+
     Column {
-        Text("COMMUTER APPS", fontSize = 9.sp, letterSpacing = 3.sp, color = Twende.Dim,
-            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+        Row(Modifier.padding(start = 4.dp, bottom = 6.dp)) {
+            DockTab("COMMUTER APPS", tab == 0) { tab = 0 }
+            Spacer(Modifier.width(18.dp))
+            DockTab("ACCESSORIES", tab == 1) { tab = 1 }
+        }
         LazyRow(
             state = state,
             flingBehavior = rememberSnapFlingBehavior(lazyListState = state),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            itemsIndexed(apps, key = { _, a -> a.pkg }) { index, app ->
-                DockIcon(app, index, state, onLaunch)
+            if (tab == 0) {
+                itemsIndexed(apps, key = { _, a -> a.pkg }) { index, app ->
+                    DockIcon(app, index, state, onLaunch)
+                }
+            } else {
+                items(accessories, key = { it.id }) { acc ->
+                    AccessoryIcon(acc, onAccessory)
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun DockTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        fontSize = 9.sp,
+        letterSpacing = 3.sp,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        color = if (selected) Twende.Cyan else Twende.Dim,
+        modifier = Modifier.clickable { onClick() },
+    )
+}
+
+/**
+ * An accessory tile. Unavailable ones (no Files app, no vendor radio on this unit)
+ * render dimmed and inert rather than throwing ActivityNotFoundException mid-drive.
+ */
+@Composable
+private fun AccessoryIcon(acc: Accessory, onOpen: (String) -> Unit) {
+    val tint = if (acc.available) Twende.Cyan else Color(0xFF3A4450)
+    Column(
+        Modifier
+            .width(92.dp)
+            .glass(18)
+            .clickable(enabled = acc.available) { onOpen(acc.id) }
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (acc.available) Color(0x1A00E5FF) else Color(0x0DFFFFFF))
+                .border(1.dp, tint.copy(alpha = 0.55f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(acc.glyph, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = tint)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (acc.available) acc.label else "${acc.label} —",
+            fontSize = 10.sp,
+            color = if (acc.available) Color(0xFFCBD4DC) else Color(0xFF5A6472),
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
