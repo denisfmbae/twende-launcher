@@ -44,8 +44,14 @@ jobs:
           TWENDE_KEY_ALIAS: twende
           TWENDE_KEY_PASS: twende123
         run: |
-          set -o pipefail
+          set +e
           gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"
+          code=${PIPESTATUS[0]}
+          echo "## Build exit code: $code" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -iE "e: file://|Unresolved reference|error:|Compilation error|FAILURE:|What went wrong|Could not|> Task .* FAILED" "$RUNNER_TEMP/build.log" | head -60 >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit $code
 
       - name: Upload build log (always)
         if: always()
