@@ -23,7 +23,7 @@ import javax.inject.Singleton
 @Singleton
 class HeadingProvider @Inject constructor(
     @ApplicationContext private val ctx: Context,
-    private val fused: FusedLocationProviderClient,
+    private val fused: FusedLocationProviderClient?,
 ) {
 
     /** Rotation-vector sensor → azimuth. SENSOR_DELAY_UI ≈ 60ms, cheap and smooth. */
@@ -48,6 +48,8 @@ class HeadingProvider @Inject constructor(
     /** 1Hz fused location; speed (m/s) doubles as a GPS fallback for the cluster. */
     @SuppressLint("MissingPermission") // requested in MainActivity; SecurityException handled below
     val location: Flow<android.location.Location> = callbackFlow {
+        val client = fused
+        if (client == null) { close(); return@callbackFlow }
         val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L).build()
         val cb = object : LocationCallback() {
             override fun onLocationResult(res: LocationResult) {
@@ -55,8 +57,8 @@ class HeadingProvider @Inject constructor(
             }
         }
         try {
-            fused.requestLocationUpdates(req, cb, Looper.getMainLooper())
+            client.requestLocationUpdates(req, cb, Looper.getMainLooper())
         } catch (_: SecurityException) { /* permission not granted yet — flow stays silent */ }
-        awaitClose { fused.removeLocationUpdates(cb) }
+        awaitClose { client.removeLocationUpdates(cb) }
     }
 }
