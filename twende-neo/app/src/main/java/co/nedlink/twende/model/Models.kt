@@ -118,3 +118,21 @@ data class BodyStatus(
         Door.TRUNK -> copy(trunk = open, source = src)
     }
 }
+
+/** One probed OBD-II sensor and whether the car answers it. */
+data class SensorInfo(
+    val pid: String,
+    val name: String,
+    val supported: Boolean,
+    val sampleValue: String = "",
+)
+
+/** Result of scanning the car for which standard sensors it exposes. */
+data class SensorScan(
+    val scanned: Boolean = false,
+    val connected: Boolean = false,
+    val simulated: Boolean = false,
+    val sensors: List<SensorInfo> = emptyList(),
+) {
+    val supportedCount: Int get() = sensors.count { it.supported }
+}
