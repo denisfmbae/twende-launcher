@@ -29,6 +29,11 @@ class InstalledAppsRepository @Inject constructor(@ApplicationContext private va
                 )
             }
             .sortedBy { it.label.lowercase() }
+            // A device can expose two launcher activities under one package
+            // (e.g. clone units with a stock + vendor Settings, both
+            // com.android.settings). Compose LazyRow keys must be unique, so
+            // collapse duplicates by package — this is what crashed v2-build-17.
+            .distinctBy { it.pkg }
             .toList()
     }
 
