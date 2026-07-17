@@ -21,9 +21,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,21 +31,21 @@ import androidx.compose.ui.unit.sp
 import co.nedlink.twende.model.BodyStatus
 import co.nedlink.twende.model.Door
 import co.nedlink.twende.ui.theme.Twende
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 private val CARDS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 private fun cardinal(deg: Float) = CARDS[(((deg + 22.5f) / 45f).toInt()) % 8]
 
 private val WARN = Color(0xFFFF3D7F)
-private val PANEL = Color(0xFF12202B)
+private val BODY_HI = Color(0xFF1E2A63)
+private val BODY_LO = Color(0xFF0A1230)
 
 /**
- * The middle-of-dashboard car. Its road scrolls in proportion to the *real*
- * speed the head unit reads over OBD-II, so the car visibly "moves" with the
- * vehicle. Any open door/hood/boot turns warning-pink and swings out. Tapping a
- * quadrant toggles that panel by hand (bench/manual use); on hardware with a
- * real door bus, CarBodyRepository feeds live state instead.
+ * The centre car, drawn as a 3/4-rear perspective view — looking at the back of
+ * the car as it drives away, tilted into the screen, the way a real digital
+ * cluster shows it. The floor grid recedes to a vanishing point and scrolls
+ * toward the viewer in proportion to real OBD speed. Open doors/hood/boot glow
+ * warning-pink. Same signature as before, so HomeScreen is unchanged.
  */
 @Composable
 fun CarSimulationWidget(
@@ -59,14 +59,13 @@ fun CarSimulationWidget(
     val speed = rememberUpdatedState(speedKmh)
     var phase by remember { mutableFloatStateOf(0f) }
 
-    // Frame-based scroll so lane speed tracks actual km/h (paused when stopped).
     LaunchedEffect(Unit) {
         var last = 0L
         while (true) {
             withFrameNanos { t ->
                 if (last != 0L) {
                     val dt = (t - last) / 1_000_000_000f
-                    phase += speed.value * dt * 8f
+                    phase += speed.value * dt * 0.9f
                     if (phase > 100_000f) phase -= 100_000f
                 }
                 last = t
@@ -84,32 +83,31 @@ fun CarSimulationWidget(
                     }
                 },
         ) {
-            drawScene(phase, speed.value, body, glow)
+            drawFloor(phase, glow)
+            drawCarPerspective(body, speed.value, glow)
         }
 
         Text(
             "${cardinal(heading)}  ${heading.roundToInt()}°",
-            color = Twende.Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
+            color = Twende.Cyan, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
         )
-
         Text(
             "$speedKmh",
-            color = Twende.Cyan, fontSize = 30.sp, fontWeight = FontWeight.Black,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 4.dp),
+            color = Twende.Cyan, fontSize = 40.sp, fontWeight = FontWeight.Black,
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 6.dp),
         )
         Text(
             "km/h",
-            color = Twende.Dim, fontSize = 10.sp,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 56.dp, bottom = 11.dp),
+            color = Twende.Dim, fontSize = 12.sp,
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 78.dp, bottom = 14.dp),
         )
-
         if (body.anyOpen) {
             val label = if (body.openCount == 1) "DOOR OPEN" else "${body.openCount} OPEN"
             Text(
                 "⚠ $label",
-                color = WARN, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp),
+                color = WARN, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
             )
         }
     }
@@ -118,102 +116,135 @@ fun CarSimulationWidget(
 private fun zoneFor(x: Float, y: Float, w: Float, h: Float): Door {
     val xf = x / w; val yf = y / h
     return when {
-        yf < 0.20f -> Door.HOOD
+        yf < 0.28f -> Door.HOOD
         yf > 0.80f -> Door.TRUNK
-        xf < 0.5f && yf < 0.5f -> Door.FRONT_LEFT
-        xf >= 0.5f && yf < 0.5f -> Door.FRONT_RIGHT
+        xf < 0.5f && yf < 0.55f -> Door.FRONT_LEFT
+        xf >= 0.5f && yf < 0.55f -> Door.FRONT_RIGHT
         xf < 0.5f -> Door.REAR_LEFT
         else -> Door.REAR_RIGHT
     }
 }
 
-private fun DrawScope.drawScene(phase: Float, speedKmh: Int, body: BodyStatus, glow: Float) {
+private fun DrawScope.drawFloor(phase: Float, glow: Float) {
     val w = size.width; val h = size.height
-    val moving = speedKmh > 1
-    val cyan = Twende.Cyan
+    val horizon = h * 0.30f
+    val vpx = w / 2f
+    val baseA = 0.12f + 0.10f * glow.coerceIn(0f, 1f)
+    val cyan = Twende.Cyan.copy(alpha = baseA)
 
-    // scrolling lane dashes
-    val period = h * 0.22f
-    val dashLen = period * 0.55f
-    val off = phase % period
-    listOf(0.18f, 0.5f, 0.82f).forEach { lx ->
-        val x = w * lx
-        var y = -period + off
-        while (y < h) {
-            drawLine(cyan.copy(alpha = 0.16f), Offset(x, y), Offset(x, y + dashLen), strokeWidth = 2f)
-            y += period
-        }
+    for (side in listOf(-1f, 1f)) {
+        val nearX = vpx + side * w * 0.6f
+        drawLine(cyan, Offset(vpx, horizon), Offset(nearX, h), strokeWidth = 2f)
+        val innerX = vpx + side * w * 0.48f
+        drawLine(cyan.copy(alpha = baseA * 0.7f), Offset(vpx, horizon), Offset(innerX, h), strokeWidth = 1.5f)
     }
 
-    val minDim = min(w, h)
-    val carW = (w * 0.46f).coerceAtMost(minDim * 0.62f)
-    val carH = (h * 0.66f).coerceAtMost(carW * 2.3f)
+    val bands = 10
+    for (i in 0..bands) {
+        val p = ((i + (phase % 1f)) / bands).coerceIn(0f, 1f)
+        val y = horizon + (h - horizon) * (p * p)
+        drawLine(Twende.Cyan.copy(alpha = baseA * (0.3f + 0.7f * p)), Offset(0f, y), Offset(w, y), strokeWidth = 1f)
+    }
+}
+
+private fun DrawScope.drawCarPerspective(body: BodyStatus, speedKmh: Int, glow: Float) {
+    val w = size.width; val h = size.height
     val cx = w / 2f
-    val left = cx - carW / 2f
-    val top = (h - carH) / 2f
-    val right = left + carW
+    val moving = speedKmh > 1
+    val rim = Twende.Cyan.copy(alpha = 0.6f + 0.4f * if (moving) glow.coerceIn(0f, 1f) else 0f)
 
-    // wheels
-    val ww = carW * 0.16f; val wh = carH * 0.14f
-    listOf(
-        Offset(left - ww * 0.4f, top + carH * 0.12f),
-        Offset(right - ww * 0.6f, top + carH * 0.12f),
-        Offset(left - ww * 0.4f, top + carH * 0.74f),
-        Offset(right - ww * 0.6f, top + carH * 0.74f),
-    ).forEach {
-        drawRoundRect(
-            Color(0xFF05070A), topLeft = it, size = Size(ww, wh),
-            cornerRadius = CornerRadius(ww * 0.4f), alpha = if (moving) 0.55f else 1f,
-        )
-    }
+    val rearY = h * 0.78f
+    val rearTopY = h * 0.50f
+    val roofFarY = h * 0.38f
+    val rearHalf = w * 0.26f
+    val frontHalf = w * 0.15f
 
-    // body + neon rim (rim brightens with glow while moving)
-    val bodyBrush = Brush.verticalGradient(
-        listOf(Color(0xFF16202B), Color(0xFF0E151D), Color(0xFF141D27)),
-        startY = top, endY = top + carH,
+    val bodyBrush = Brush.verticalGradient(listOf(BODY_HI, BODY_LO), startY = roofFarY, endY = rearY)
+
+    drawOval(
+        Brush.radialGradient(
+            listOf(Twende.Cyan.copy(alpha = 0.18f), Color.Transparent),
+            center = Offset(cx, rearY + h * 0.02f), radius = w * 0.42f,
+        ),
+        topLeft = Offset(cx - w * 0.42f, rearY - h * 0.06f),
+        size = Size(w * 0.84f, h * 0.20f),
     )
-    drawRoundRect(bodyBrush, topLeft = Offset(left, top), size = Size(carW, carH), cornerRadius = CornerRadius(carW * 0.28f))
+
+    val bodyPath = Path().apply {
+        moveTo(cx - rearHalf, rearY)
+        lineTo(cx - rearHalf, rearTopY)
+        lineTo(cx - frontHalf, roofFarY)
+        lineTo(cx + frontHalf, roofFarY)
+        lineTo(cx + rearHalf, rearTopY)
+        lineTo(cx + rearHalf, rearY)
+        close()
+    }
+    drawPath(bodyPath, bodyBrush)
+    drawPath(bodyPath, rim, style = Stroke(width = 2.5f))
+
+    val glassPath = Path().apply {
+        val gTop = rearTopY + (roofFarY - rearTopY) * 0.15f
+        moveTo(cx - rearHalf * 0.72f, rearTopY + h * 0.02f)
+        lineTo(cx - frontHalf * 0.7f, gTop)
+        lineTo(cx + frontHalf * 0.7f, gTop)
+        lineTo(cx + rearHalf * 0.72f, rearTopY + h * 0.02f)
+        close()
+    }
+    drawPath(glassPath, Twende.Cyan.copy(alpha = 0.10f))
+    drawPath(glassPath, Twende.Cyan.copy(alpha = 0.30f), style = Stroke(width = 1.5f))
+
+    val tail = if (moving) Twende.Magenta else Twende.Magenta.copy(alpha = 0.6f)
     drawRoundRect(
-        cyan.copy(alpha = 0.55f + 0.35f * if (moving) glow else 0f),
-        topLeft = Offset(left, top), size = Size(carW, carH),
-        cornerRadius = CornerRadius(carW * 0.28f), style = Stroke(width = 2f),
+        tail,
+        topLeft = Offset(cx - rearHalf * 0.9f, rearY - h * 0.05f),
+        size = Size(rearHalf * 1.8f, h * 0.035f),
+        cornerRadius = CornerRadius(4f),
     )
 
-    // cabin
-    val cabW = carW * 0.68f; val cabH = carH * 0.40f
-    drawRoundRect(Color(0xFF0A1018), topLeft = Offset(cx - cabW / 2f, top + carH * 0.30f), size = Size(cabW, cabH), cornerRadius = CornerRadius(carW * 0.14f))
-    drawRoundRect(cyan.copy(alpha = 0.10f), topLeft = Offset(cx - cabW * 0.4f, top + carH * 0.33f), size = Size(cabW * 0.8f, cabH * 0.42f), cornerRadius = CornerRadius(carW * 0.10f))
+    drawSideDoor(body.rearLeft, true, true, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
+    drawSideDoor(body.frontLeft, true, false, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
+    drawSideDoor(body.rearRight, false, true, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
+    drawSideDoor(body.frontRight, false, false, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
 
-    // hood + boot
-    drawPanel(body.hood, left + carW * 0.15f, top + carH * 0.035f, carW * 0.70f, carH * 0.10f, -carH * 0.05f, cyan)
-    drawPanel(body.trunk, left + carW * 0.15f, top + carH * 0.865f, carW * 0.70f, carH * 0.10f, carH * 0.05f, cyan)
-
-    // doors
-    val doorW = carW * 0.15f; val doorLen = carH * 0.20f
-    drawDoor(body.frontLeft, left, top + carH * 0.30f, doorW, doorLen, true, cyan)
-    drawDoor(body.frontRight, right, top + carH * 0.30f, doorW, doorLen, false, cyan)
-    drawDoor(body.rearLeft, left, top + carH * 0.52f, doorW, doorLen, true, cyan)
-    drawDoor(body.rearRight, right, top + carH * 0.52f, doorW, doorLen, false, cyan)
-
-    // head/tail lights
-    val lw = carW * 0.22f; val lh = carH * 0.02f
-    drawRoundRect(cyan, topLeft = Offset(left + carW * 0.16f, top), size = Size(lw, lh), cornerRadius = CornerRadius(2f), alpha = if (moving) 1f else 0.6f)
-    drawRoundRect(cyan, topLeft = Offset(left + carW * 0.62f, top), size = Size(lw, lh), cornerRadius = CornerRadius(2f), alpha = if (moving) 1f else 0.6f)
-    drawRoundRect(Twende.Magenta, topLeft = Offset(left + carW * 0.16f, top + carH - lh), size = Size(lw, lh), cornerRadius = CornerRadius(2f))
-    drawRoundRect(Twende.Magenta, topLeft = Offset(left + carW * 0.62f, top + carH - lh), size = Size(lw, lh), cornerRadius = CornerRadius(2f))
-}
-
-private fun DrawScope.drawDoor(open: Boolean, hingeX: Float, hingeY: Float, w: Float, h: Float, leftSide: Boolean, cyan: Color) {
-    val angle = if (open) (if (leftSide) -44f else 44f) else 0f
-    val x = if (leftSide) hingeX - w else hingeX
-    rotate(angle, pivot = Offset(hingeX, hingeY)) {
-        drawRoundRect(if (open) WARN else PANEL, topLeft = Offset(x, hingeY), size = Size(w, h), cornerRadius = CornerRadius(w * 0.3f))
-        drawRoundRect(if (open) WARN else cyan.copy(alpha = 0.5f), topLeft = Offset(x, hingeY), size = Size(w, h), cornerRadius = CornerRadius(w * 0.3f), style = Stroke(width = 1.4f))
+    if (body.trunk) {
+        drawRoundRect(WARN.copy(alpha = 0.5f),
+            topLeft = Offset(cx - rearHalf * 0.8f, rearTopY + h * 0.02f),
+            size = Size(rearHalf * 1.6f, h * 0.05f), cornerRadius = CornerRadius(6f))
+    }
+    if (body.hood) {
+        drawRoundRect(WARN.copy(alpha = 0.5f),
+            topLeft = Offset(cx - frontHalf * 0.9f, roofFarY - h * 0.02f),
+            size = Size(frontHalf * 1.8f, h * 0.04f), cornerRadius = CornerRadius(6f))
     }
 }
 
-private fun DrawScope.drawPanel(open: Boolean, x: Float, y: Float, w: Float, h: Float, openDy: Float, cyan: Color) {
-    val yy = if (open) y + openDy else y
-    drawRoundRect(if (open) WARN else PANEL, topLeft = Offset(x, yy), size = Size(w, h), cornerRadius = CornerRadius(h * 0.4f))
-    drawRoundRect(if (open) WARN else cyan.copy(alpha = 0.5f), topLeft = Offset(x, yy), size = Size(w, h), cornerRadius = CornerRadius(h * 0.4f), style = Stroke(width = 1.4f))
+private fun DrawScope.drawSideDoor(
+    open: Boolean, left: Boolean, near: Boolean,
+    cx: Float, rearHalf: Float, frontHalf: Float,
+    rearY: Float, rearTopY: Float, roofFarY: Float,
+) {
+    if (!open) return
+    val sign = if (left) -1f else 1f
+    val midHalf = (rearHalf + frontHalf) / 2f
+    val midBottomY = (rearY + roofFarY) / 2f + (rearTopY - roofFarY) * 0.15f
+    val midTopY = (rearTopY + roofFarY) / 2f
+
+    val xA: Float; val botA: Float; val topA: Float
+    val xB: Float; val botB: Float; val topB: Float
+    if (near) {
+        xA = sign * rearHalf; botA = rearY; topA = rearTopY
+        xB = sign * midHalf;  botB = midBottomY; topB = midTopY
+    } else {
+        xA = sign * midHalf;  botA = midBottomY; topA = midTopY
+        xB = sign * frontHalf; botB = roofFarY;  topB = roofFarY
+    }
+    val path = Path().apply {
+        moveTo(cx + xA, botA)
+        lineTo(cx + xA, topA)
+        lineTo(cx + xB, topB)
+        lineTo(cx + xB, botB)
+        close()
+    }
+    drawPath(path, WARN.copy(alpha = 0.55f))
+    drawPath(path, WARN, style = Stroke(width = 2f))
 }
