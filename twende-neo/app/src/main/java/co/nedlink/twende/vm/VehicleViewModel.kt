@@ -63,6 +63,13 @@ class VehicleViewModel @Inject constructor(
     val dtc = MutableStateFlow(DtcReport())
     val scanningDtc = MutableStateFlow(false)
 
+    /* ---- demo driving (simulator only) ---- */
+    val demoDriving = MutableStateFlow(false)
+    fun toggleDemoDriving() {
+        demoDriving.value = !demoDriving.value
+        obd.setDemoDriving(demoDriving.value)
+    }
+
     /* ---- sensor scan ---- */
     val sensorScan = MutableStateFlow(SensorScan())
     val scanningSensors = MutableStateFlow(false)
