@@ -8,6 +8,8 @@ import android.os.IBinder
 import co.nedlink.twende.data.vehicle.TripComputer
 import co.nedlink.twende.model.DtcReport
 import co.nedlink.twende.model.Dtc
+import co.nedlink.twende.model.SensorInfo
+import co.nedlink.twende.model.SensorScan
 import co.nedlink.twende.model.Telemetry
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +44,7 @@ class ObdService : Service() {
         fun configure(simulated: Boolean, mac: String) = this@ObdService.configure(simulated, mac)
         fun setPolling(active: Boolean) { polling.value = active }
         suspend fun scanDtcs(): DtcReport = this@ObdService.scanDtcs()
+        suspend fun scanSensors(): SensorScan = this@ObdService.scanSensors()
     }
 
     private val binder = LocalBinder()
@@ -114,6 +117,38 @@ class ObdService : Service() {
             }
             elm.readDtcs()
         }.getOrElse { DtcReport(scanned = true) }
+    }
+
+    /** Probe which standard OBD-II sensors this car exposes. */
+    private suspend fun scanSensors(): SensorScan = withContext(Dispatchers.IO) {
+        if (simulated || elmMac.isBlank()) {
+            // Bench demo: present the sensors the simulator "answers" so the UI is
+            // populated without a dongle, clearly flagged as simulated.
+            SensorScan(
+                scanned = true, connected = false, simulated = true,
+                sensors = listOf(
+                    SensorInfo("010C","Engine RPM",true,"3532 rpm"),
+                    SensorInfo("010D","Vehicle speed",true,"95 km/h"),
+                    SensorInfo("0105","Coolant temperature",true,"91 °C"),
+                    SensorInfo("0104","Calculated engine load",true,"63 %"),
+                    SensorInfo("0111","Throttle position",true,"42 %"),
+                    SensorInfo("012F","Fuel level",true,"67 %"),
+                    SensorInfo("0142","Control module voltage",true,"14.1 V"),
+                    SensorInfo("010F","Intake air temperature",false),
+                    SensorInfo("0110","Mass air flow (MAF)",false),
+                    SensorInfo("010B","Intake manifold pressure",false),
+                    SensorInfo("010A","Fuel pressure",false),
+                    SensorInfo("0106","Short-term fuel trim",false),
+                ),
+            )
+        } else runCatching {
+            if (!elm.isConnected) {
+                val adapter = (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
+                elm.connect(adapter, elmMac)
+            }
+            SensorScan(scanned = true, connected = true, simulated = false,
+                sensors = elm.scanSupportedPids())
+        }.getOrElse { SensorScan(scanned = true, connected = false) }
     }
 
     private fun readLive(): Telemetry? = runCatching {
