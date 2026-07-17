@@ -1,6 +1,7 @@
 package co.nedlink.twende.ui.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +38,11 @@ fun TelemetryCluster(
     modifier: Modifier = Modifier,
 ) {
     val speed = if (metric) t.speedKmh else (t.speedKmh * 0.6214f).roundToInt()
+    val statusLabel = when {
+        t.source.name == "ELM327" -> "LIVE"
+        demoDriving -> "DEMO DRIVE"
+        else -> "PARKED"
+    }
     val unit = if (metric) "km/h" else "mph"
     val over = speedLimitKmh > 0 && t.speedKmh > speedLimitKmh
     val speedColor = if (over) FuelRed else Twende.Cyan
@@ -49,7 +55,19 @@ fun TelemetryCluster(
         modifier.glass().verticalScroll(rememberScrollState()).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("TELEMETRY · ${t.source}", fontSize = 9.sp, color = Twende.Dim, letterSpacing = 2.sp)
+        Text(
+            "TELEMETRY · $statusLabel",
+            fontSize = 9.sp,
+            color = if (t.source.name == "ELM327") Twende.Cyan else Twende.Dim,
+            letterSpacing = 2.sp,
+            modifier = Modifier.clickable { onToggleDemo() },
+        )
+        if (t.source.name != "ELM327") {
+            Text(
+                if (demoDriving) "tap to stop demo" else "tap for demo drive",
+                fontSize = 8.sp, color = Twende.Dim.copy(alpha = 0.6f), letterSpacing = 1.sp,
+            )
+        }
 
         Text("$speed", style = neonStyle(speedColor, 48, glow),
             modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
