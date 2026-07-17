@@ -35,6 +35,8 @@ fun TelemetryCluster(
     glow: Float,
     speedLimitKmh: Int,
     tankLitres: Float,
+    demoDriving: Boolean = false,
+    onToggleDemo: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val speed = if (metric) t.speedKmh else (t.speedKmh * 0.6214f).roundToInt()
