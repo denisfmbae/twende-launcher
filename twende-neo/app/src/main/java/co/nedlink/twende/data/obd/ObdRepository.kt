@@ -44,6 +44,11 @@ class ObdRepository @Inject constructor(
         binderState.value?.setPolling(fg)
     }
 
+    /** Turn the demo driving animation on/off (only affects the simulator). */
+    fun setDemoDriving(on: Boolean) {
+        binderState.value?.demoDrive(on)
+    }
+
     /** One-shot fault-code scan. Null if the service isn't bound yet. */
     suspend fun scanDtcs(): DtcReport? = binderState.value?.scanDtcs()
 
