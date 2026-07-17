@@ -24,6 +24,7 @@ class TwendeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashCatcher.install(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 obdRepository.setAppForeground(true)
