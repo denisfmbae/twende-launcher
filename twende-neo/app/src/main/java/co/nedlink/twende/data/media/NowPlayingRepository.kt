@@ -51,11 +51,12 @@ class NowPlayingRepository @Inject constructor(
 
     private val foreground = MutableStateFlow(true)
 
-    private val audio: AudioManager
-        get() = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    // Nullable + runCatching: clone units may lack these services entirely.
+    private val audio: AudioManager?
+        get() = runCatching { ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }.getOrNull()
 
-    private val sessions: MediaSessionManager
-        get() = ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+    private val sessions: MediaSessionManager?
+        get() = runCatching { ctx.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager }.getOrNull()
 
     private val listenerComponent = ComponentName(ctx, TwendeNotificationListener::class.java)
 
@@ -65,7 +66,7 @@ class NowPlayingRepository @Inject constructor(
         scope.launch {
             while (isActive) {
                 foreground.first { it }      // suspends, zero cost, until we're on screen
-                refresh()
+                runCatching { refresh() }    // never let a media-service quirk crash the app
                 delay(1500)
             }
         }
@@ -93,7 +94,7 @@ class NowPlayingRepository @Inject constructor(
     private fun controller(): MediaController? {
         if (!hasMetadataAccess()) return null
         return runCatching {
-            val active = sessions.getActiveSessions(listenerComponent)
+            val active = sessions?.getActiveSessions(listenerComponent).orEmpty()
             active.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
                 ?: active.firstOrNull()
         }.getOrNull()
@@ -120,7 +121,7 @@ class NowPlayingRepository @Inject constructor(
             )
         } else {
             // No metadata rights (or no session) — but we can still tell if sound is coming out.
-            val playing = runCatching { audio.isMusicActive }.getOrDefault(false)
+            val playing = runCatching { (audio?.isMusicActive ?: false) }.getOrDefault(false)
             _state.value = NowPlaying(
                 active = playing,
                 playing = playing,
@@ -156,8 +157,8 @@ class NowPlayingRepository @Inject constructor(
             runCatching { action(c.transportControls) }
         } else {
             runCatching {
-                audio.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-                audio.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+                audio?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+                audio?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
             }
         }
         scope.launch { delay(350); refresh() }   // reflect the new track promptly
