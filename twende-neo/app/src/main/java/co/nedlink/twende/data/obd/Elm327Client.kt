@@ -4,9 +4,8 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import co.nedlink.twende.model.Dtc
+import co.nedlink.twende.model.DtcReport
 import co.nedlink.twende.model.SensorInfo
-import co.nedlink.twende.model.Dtc
-import co.nedlink.twende.model.SensorInfoReport
 import co.nedlink.twende.model.Telemetry
 import java.util.UUID
 
@@ -138,24 +137,6 @@ class Elm327Client {
         } ?: ""
     }.getOrDefault("")
 
-    private companion object {
-        // The common Mode-01 sensors worth surfacing, in a sensible order.
-        val KNOWN = listOf(
-            "010C" to "Engine RPM",
-            "010D" to "Vehicle speed",
-            "0105" to "Coolant temperature",
-            "010F" to "Intake air temperature",
-            "0104" to "Calculated engine load",
-            "0111" to "Throttle position",
-            "012F" to "Fuel level",
-            "0142" to "Control module voltage",
-            "0110" to "Mass air flow (MAF)",
-            "010B" to "Intake manifold pressure",
-            "010A" to "Fuel pressure",
-            "0106" to "Short-term fuel trim",
-        )
-    }
-
     private fun pidBytes(pid: String, n: Int): List<Int>? {
         val raw = command(pid) ?: return null
         val hex = raw.uppercase().replace(Regex("[^0-9A-F]"), "")
@@ -197,6 +178,22 @@ class Elm327Client {
 
     private companion object {
         const val READ_TIMEOUT_MS = 2000L
+
+        // The common Mode-01 sensors worth surfacing, in a sensible order.
+        val KNOWN = listOf(
+            "010C" to "Engine RPM",
+            "010D" to "Vehicle speed",
+            "0105" to "Coolant temperature",
+            "010F" to "Intake air temperature",
+            "0104" to "Calculated engine load",
+            "0111" to "Throttle position",
+            "012F" to "Fuel level",
+            "0142" to "Control module voltage",
+            "0110" to "Mass air flow (MAF)",
+            "010B" to "Intake manifold pressure",
+            "010A" to "Fuel pressure",
+            "0106" to "Short-term fuel trim",
+        )
     }
 
     fun close() {
