@@ -229,7 +229,7 @@ private fun BottomDock(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (tab == 0) {
-                itemsIndexed(apps, key = { _, a -> a.pkg }) { index, app ->
+                itemsIndexed(apps, key = { i, a -> "${a.pkg}#$i" }) { index, app ->
                     DockIcon(app, index, state, onLaunch)
                 }
             } else {
