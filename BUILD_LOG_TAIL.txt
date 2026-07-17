@@ -38,33 +38,33 @@ Calculating task graph as no cached configuration is available for tasks: assemb
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preReleaseBuild UP-TO-DATE
 > Task :app:buildKotlinToolingMetadata
-> Task :app:generateReleaseResValues
 > Task :app:createReleaseCompatibleScreenManifests
+> Task :app:generateReleaseResValues
 > Task :app:extractProguardFiles
 > Task :app:generateReleaseResources
+> Task :app:javaPreCompileRelease
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
 > Task :app:extractDeepLinksRelease
 > Task :app:packageReleaseResources
-> Task :app:mapReleaseSourceSetPaths
-> Task :app:checkReleaseAarMetadata
-> Task :app:parseReleaseLocalResources
-> Task :app:javaPreCompileRelease
 > Task :app:mergeReleaseJniLibFolders
+> Task :app:parseReleaseLocalResources
 > Task :app:mergeReleaseArtProfile
 > Task :app:mergeReleaseNativeLibs
+> Task :app:processReleaseMainManifest
 
 > Task :app:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so.
 
 > Task :app:extractReleaseNativeSymbolTables
 > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:processReleaseMainManifest
 > Task :app:processReleaseManifest
-> Task :app:checkReleaseDuplicateClasses
-> Task :app:mergeReleaseStartupProfile
 > Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseStartupProfile
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:checkReleaseDuplicateClasses
 > Task :app:mergeReleaseAssets
 > Task :app:compressReleaseAssets
 > Task :app:processApplicationManifestReleaseForBundle
@@ -87,12 +87,12 @@ Unable to strip the following libraries, packaging them as they are: libandroidx
 > Task :app:generateReleaseLintVitalReportModel
 > Task :app:transformReleaseClassesWithAsm
 > Task :app:mergeReleaseGeneratedProguardFiles
-> Task :app:mergeReleaseJavaResource
 > Task :app:expandReleaseArtProfileWildcards
+> Task :app:mergeReleaseJavaResource
 > Task :app:lintVitalAnalyzeRelease
-> Task :app:minifyReleaseWithR8
 > Task :app:lintVitalReportRelease
 > Task :app:lintVitalRelease
+> Task :app:minifyReleaseWithR8
 
 > Task :app:l8DexDesugarLibRelease
 Info: Proguard configuration rule does not match anything: `-keepclassmembers class j$.util.concurrent.ConcurrentHashMap$TreeBin {
@@ -132,9 +132,9 @@ Info: Proguard configuration rule does not match anything: `-keepclassmembers cl
 > Task :app:packageRelease
 > Task :app:assembleRelease
 > Task :app:createReleaseApkListingFileRedirect
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784293130186.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784296582861.json
 
-BUILD SUCCESSFUL in 2m 38s
+BUILD SUCCESSFUL in 1m 49s
 56 actionable tasks: 56 executed
 Configuration cache entry stored.
 === apk search ===
