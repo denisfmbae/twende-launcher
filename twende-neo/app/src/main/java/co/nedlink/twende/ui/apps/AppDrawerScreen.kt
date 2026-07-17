@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +48,7 @@ fun AppDrawerScreen(vm: LauncherViewModel = hiltViewModel()) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = 12.dp),
             ) {
-                items(apps, key = { it.pkg }) { app ->
+                itemsIndexed(apps, key = { i, a -> "${a.pkg}#$i" }) { _, app ->
                     Column(
                         Modifier.glass(16).clickable { vm.launch(app.pkg) }.padding(vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
