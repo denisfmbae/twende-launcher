@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
 import co.nedlink.twende.model.Dtc
-import co.nedlink.twende.model.DtcReport
+import co.nedlink.twende.model.SensorInfo
+import co.nedlink.twende.model.Dtc
+import co.nedlink.twende.model.SensorInfoReport
 import co.nedlink.twende.model.Telemetry
 import java.util.UUID
 
@@ -85,6 +87,75 @@ class Elm327Client {
     fun clearDtcs(): Boolean = command("04")?.contains("44") == true
 
     /** Sends a PID query and extracts n data bytes after the 41xx echo. */
+    /**
+     * Ask the car which Mode-01 sensors it actually supports. OBD-II exposes this
+     * via "support" PIDs: 0100 reports support for 01-20, 0120 for 21-40, 0140 for
+     * 41-60 — each a 32-bit mask where a set bit = that PID is answerable. We read
+     * those masks, then for the sensors Twende uses we also pull a live sample.
+     *
+     * This is the honest, real answer to "what can this car tell me" — it's the
+     * car's own declared capability, not a guess. Body sensors (doors, seatbelt)
+     * are absent by design: they aren't Mode-01 PIDs on a generic bus.
+     */
+    fun scanSupportedPids(): List<SensorInfo> {
+        val supported = HashSet<Int>()
+        listOf(0x00, 0x20, 0x40).forEach { base ->
+            val cmd = "01%02X".format(base)
+            val bytes = pidBytes(cmd, 4) ?: return@forEach
+            var mask = 0L
+            bytes.forEach { mask = (mask shl 8) or it.toLong() }
+            for (bit in 0 until 32) {
+                if ((mask shr (31 - bit)) and 1L == 1L) supported.add(base + bit + 1)
+            }
+        }
+        return KNOWN.map { (pid, name) ->
+            val num = pid.removePrefix("01").toInt(16)
+            val ok = supported.contains(num)
+            SensorInfo(
+                pid = pid,
+                name = name,
+                supported = ok,
+                sampleValue = if (ok) sampleFor(pid) else "",
+            )
+        }
+    }
+
+    private fun sampleFor(pid: String): String = runCatching {
+        when (pid) {
+            "010C" -> pidBytes(pid, 2)?.let { "${(it[0] * 256 + it[1]) / 4} rpm" }
+            "010D" -> pidBytes(pid, 1)?.let { "${it[0]} km/h" }
+            "0105" -> pidBytes(pid, 1)?.let { "${it[0] - 40} °C" }
+            "012F" -> pidBytes(pid, 1)?.let { "${it[0] * 100 / 255} %" }
+            "0111" -> pidBytes(pid, 1)?.let { "${it[0] * 100 / 255} %" }
+            "0104" -> pidBytes(pid, 1)?.let { "${it[0] * 100 / 255} %" }
+            "0142" -> pidBytes(pid, 2)?.let { "%.1f V".format((it[0] * 256 + it[1]) / 1000f) }
+            "010F" -> pidBytes(pid, 1)?.let { "${it[0] - 40} °C" }
+            "0110" -> pidBytes(pid, 2)?.let { "%.2f g/s".format((it[0] * 256 + it[1]) / 100f) }
+            "010B" -> pidBytes(pid, 1)?.let { "${it[0]} kPa" }
+            "010A" -> pidBytes(pid, 1)?.let { "${it[0] * 3} kPa" }
+            "0106" -> pidBytes(pid, 1)?.let { "%+d %%".format((it[0] - 128) * 100 / 128) }
+            else -> null
+        } ?: ""
+    }.getOrDefault("")
+
+    private companion object {
+        // The common Mode-01 sensors worth surfacing, in a sensible order.
+        val KNOWN = listOf(
+            "010C" to "Engine RPM",
+            "010D" to "Vehicle speed",
+            "0105" to "Coolant temperature",
+            "010F" to "Intake air temperature",
+            "0104" to "Calculated engine load",
+            "0111" to "Throttle position",
+            "012F" to "Fuel level",
+            "0142" to "Control module voltage",
+            "0110" to "Mass air flow (MAF)",
+            "010B" to "Intake manifold pressure",
+            "010A" to "Fuel pressure",
+            "0106" to "Short-term fuel trim",
+        )
+    }
+
     private fun pidBytes(pid: String, n: Int): List<Int>? {
         val raw = command(pid) ?: return null
         val hex = raw.uppercase().replace(Regex("[^0-9A-F]"), "")
