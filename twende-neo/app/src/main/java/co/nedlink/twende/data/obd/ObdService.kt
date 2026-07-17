@@ -43,6 +43,7 @@ class ObdService : Service() {
         val telemetry: StateFlow<Telemetry> get() = this@ObdService.telemetry
         fun configure(simulated: Boolean, mac: String) = this@ObdService.configure(simulated, mac)
         fun setPolling(active: Boolean) { polling.value = active }
+        fun demoDrive(on: Boolean) = this@ObdService.setDemoDriving(on)
         suspend fun scanDtcs(): DtcReport = this@ObdService.scanDtcs()
         suspend fun scanSensors(): SensorScan = this@ObdService.scanSensors()
     }
@@ -83,14 +84,36 @@ class ObdService : Service() {
         }
     }
 
-    /** Smooth, plausible bench data: idle→cruise cycles with fuel slowly draining. */
+    /**
+     * Demo telemetry for the bench — but HONEST at standstill. With no dongle
+     * connected the app can't know real speed, so it must not invent motion:
+     * it sits at a realistic engine idle (≈780 rpm, 0 km/h), exactly like a
+     * parked car with the engine on. Motion only appears when [demoDriving] is
+     * explicitly turned on (a "demo drive" toggle) OR when a real ELM327 feeds
+     * live data. This is what makes the cluster trustworthy: stopped means stopped.
+     */
     private fun simulate(t: Double): Telemetry {
-        val cruise = (sin(t / 14.0) + 1) / 2                 // 0..1 driving cycle
+        if (!demoDriving) {
+            // Parked, engine idling. Tiny rpm flutter so it looks alive, zero speed.
+            val idleRpm = (780 + sin(t * 1.7) * 25).toInt()
+            return Telemetry(
+                rpm = idleRpm,
+                speedKmh = 0,
+                fuelPct = fuelStart,
+                coolantC = 88,
+                batteryV = 14.1f,
+                throttlePct = 0,
+                engineLoadPct = 16,
+                source = Telemetry.Source.SIMULATOR,
+            )
+        }
+        // Demo-drive mode: the old plausible idle→cruise cycle, for showing off.
+        val cruise = (sin(t / 14.0) + 1) / 2
         val rpm = (900 + cruise * 2600 + sin(t) * 120).toInt()
         return Telemetry(
             rpm = rpm,
             speedKmh = (cruise * 96 + abs(sin(t / 3)) * 4).toInt(),
-            fuelPct = (68 - t / 40).toInt().coerceIn(5, 100),
+            fuelPct = (fuelStart - t / 40).toInt().coerceIn(5, 100),
             coolantC = (78 + cruise * 14).toInt(),
             batteryV = if (rpm > 300) (14.0 + sin(t / 5) * 0.3).toFloat() else 12.5f,
             throttlePct = (cruise * 70 + abs(sin(t / 2)) * 12).toInt().coerceIn(0, 100),
@@ -98,6 +121,10 @@ class ObdService : Service() {
             source = Telemetry.Source.SIMULATOR,
         )
     }
+
+    @Volatile private var demoDriving = false
+    private val fuelStart = 68
+    fun setDemoDriving(on: Boolean) { demoDriving = on }
 
     /** One-shot fault-code scan (OBD-II Mode 03). Runs on IO, never the UI thread. */
     private suspend fun scanDtcs(): DtcReport = withContext(Dispatchers.IO) {
