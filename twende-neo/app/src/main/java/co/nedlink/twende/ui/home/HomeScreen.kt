@@ -34,6 +34,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +76,10 @@ fun HomeScreen(
     val trip by vehicle.trip.collectAsStateWithLifecycle()
     val dtc by vehicle.dtc.collectAsStateWithLifecycle()
     val scanningDtc by vehicle.scanningDtc.collectAsStateWithLifecycle()
+    val sensorScan by vehicle.sensorScan.collectAsStateWithLifecycle()
+    val scanningSensors by vehicle.scanningSensors.collectAsStateWithLifecycle()
+    var simpleMode by rememberSaveable { mutableStateOf(false) }
+    var showSensors by rememberSaveable { mutableStateOf(false) }
     val pois by vehicle.pois.collectAsStateWithLifecycle()
     val searching by vehicle.searching.collectAsStateWithLifecycle()
     val apps by launcher.apps.collectAsStateWithLifecycle()
@@ -89,9 +95,22 @@ fun HomeScreen(
                 btLabel = bt.deviceName?.let { n -> bt.batteryPct?.let { "$n · $it%" } ?: n } ?: "Not connected",
                 carLink = carLink.connected,
                 glow = prefs.glowIntensity,
+                simpleMode = simpleMode,
+                onToggleSimple = { simpleMode = !simpleMode },
             )
 
             Spacer(Modifier.height(10.dp))
+
+            if (simpleMode) {
+                SimpleMode(
+                    speedKmh = telemetry.speedKmh,
+                    fuelPct = telemetry.fuelPct,
+                    apps = launcher.commuterApps.ifEmpty { apps.take(6) },
+                    onLaunch = launcher::launch,
+                    onSensors = { showSensors = true; vehicle.scanSensors() },
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
 
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 TelemetryCluster(
@@ -157,6 +176,18 @@ fun HomeScreen(
                 accessories = accessories,
                 onLaunch = launcher::launch,
                 onAccessory = launcher::openAccessory,
+                onSensors = { showSensors = true; vehicle.scanSensors() },
+            )
+            } // end else (full dashboard)
+        }
+
+        // Sensor scan overlay sits above everything.
+        if (showSensors) {
+            SensorScanPanel(
+                scan = sensorScan,
+                scanning = scanningSensors,
+                onScan = vehicle::scanSensors,
+                onClose = { showSensors = false },
             )
         }
     }
@@ -165,7 +196,7 @@ fun HomeScreen(
 /* ---------- top bar ---------- */
 
 @Composable
-private fun TopStatusBar(bt: Boolean, btLabel: String, carLink: Boolean, glow: Float) {
+private fun TopStatusBar(bt: Boolean, btLabel: String, carLink: Boolean, glow: Float, simpleMode: Boolean, onToggleSimple: () -> Unit) {
     val time by produceState(initialValue = LocalDateTime.now()) {
         while (true) { value = LocalDateTime.now(); delay(1000) }
     }
@@ -213,6 +244,7 @@ private fun BottomDock(
     accessories: List<Accessory>,
     onLaunch: (String) -> Unit,
     onAccessory: (String) -> Unit,
+    onSensors: () -> Unit = {},
 ) {
     var tab by remember { mutableIntStateOf(0) }
     val state = rememberLazyListState()
@@ -233,6 +265,9 @@ private fun BottomDock(
                     DockIcon(app, index, state, onLaunch)
                 }
             } else {
+                item {
+                    AccessoryTile("SCAN", "Sensors", available = true, onClick = onSensors)
+                }
                 items(accessories, key = { it.id }) { acc ->
                     AccessoryIcon(acc, onAccessory)
                 }
@@ -320,5 +355,81 @@ private fun DockIcon(app: AppEntry, index: Int, state: androidx.compose.foundati
         }
         Spacer(Modifier.height(6.dp))
         Text(app.label, fontSize = 10.sp, color = Color(0xFFCBD4DC), maxLines = 1, textAlign = TextAlign.Center)
+    }
+}
+
+/* A generic big dock tile (used for the Sensors scanner entry). */
+@Composable
+private fun AccessoryTile(glyph: String, label: String, available: Boolean, onClick: () -> Unit) {
+    val tint = if (available) Twende.Cyan else Color(0xFF3A4450)
+    Column(
+        Modifier
+            .width(96.dp)
+            .glass(18)
+            .clickable(enabled = available) { onClick() }
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+                .background(Color(0x1A00E5FF))
+                .border(1.dp, tint.copy(alpha = 0.55f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) { Text(glyph, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = tint) }
+        Spacer(Modifier.height(6.dp))
+        Text(label, fontSize = 11.sp, color = Color(0xFFCBD4DC), maxLines = 1)
+    }
+}
+
+/* ---------- SIMPLE (driving) MODE: few, huge tiles ---------- */
+@Composable
+private fun SimpleMode(
+    speedKmh: Int,
+    fuelPct: Int,
+    apps: List<AppEntry>,
+    onLaunch: (String) -> Unit,
+    onSensors: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Huge speed + fuel banner
+        Row(Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.weight(1f).fillMaxSize().glass(20), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$speedKmh", fontSize = 64.sp, fontWeight = FontWeight.Black, color = Twende.Cyan)
+                    Text("km/h", fontSize = 14.sp, color = Twende.Dim)
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxSize().glass(20), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$fuelPct%", fontSize = 56.sp, fontWeight = FontWeight.Black,
+                        color = fuelColor(fuelPct))
+                    Text("FUEL", fontSize = 14.sp, color = Twende.Dim)
+                }
+            }
+        }
+        // Big app buttons — 3 across, tall, easy to hit
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
+            items(apps.take(6), key = { it.pkg }) { app ->
+                Box(
+                    Modifier.width(150.dp).fillMaxSize().glass(20)
+                        .clickable { onLaunch(app.pkg) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(app.label, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                        color = Color(0xFFE8ECF1), maxLines = 2, textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(10.dp))
+                }
+            }
+            item {
+                Box(
+                    Modifier.width(150.dp).fillMaxSize().glass(20).clickable { onSensors() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("SCAN\nSENSORS", fontSize = 18.sp, fontWeight = FontWeight.Black,
+                        color = Twende.Cyan, textAlign = TextAlign.Center)
+                }
+            }
+        }
     }
 }
