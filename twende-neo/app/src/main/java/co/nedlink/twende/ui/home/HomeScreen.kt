@@ -77,6 +77,7 @@ fun HomeScreen(
     val dtc by vehicle.dtc.collectAsStateWithLifecycle()
     val scanningDtc by vehicle.scanningDtc.collectAsStateWithLifecycle()
     val sensorScan by vehicle.sensorScan.collectAsStateWithLifecycle()
+    val demoDriving by vehicle.demoDriving.collectAsStateWithLifecycle()
     val scanningSensors by vehicle.scanningSensors.collectAsStateWithLifecycle()
     var simpleMode by rememberSaveable { mutableStateOf(false) }
     var showSensors by rememberSaveable { mutableStateOf(false) }
@@ -120,6 +121,8 @@ fun HomeScreen(
                     glow = prefs.glowIntensity,
                     speedLimitKmh = prefs.speedLimitKmh,
                     tankLitres = prefs.tankLitres,
+                    demoDriving = demoDriving,
+                    onToggleDemo = vehicle::toggleDemoDriving,
                     modifier = Modifier.weight(0.30f),
                 )
                 Box(Modifier.weight(0.40f)) {
