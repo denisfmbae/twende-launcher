@@ -1,6 +1,7 @@
 pwd: /home/runner/work/twende-launcher/twende-launcher/twende-neo
 files: AppModule.kt
 BUILD_APK.md
+BUILD_TRIGGER.txt
 BtStatusRepository.kt
 CHANGELOG.md
 CarBodyRepository.kt
@@ -37,10 +38,10 @@ Calculating task graph as no cached configuration is available for tasks: assemb
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preReleaseBuild UP-TO-DATE
-> Task :app:buildKotlinToolingMetadata
-> Task :app:extractProguardFiles
 > Task :app:generateReleaseResValues
 > Task :app:createReleaseCompatibleScreenManifests
+> Task :app:buildKotlinToolingMetadata
+> Task :app:extractProguardFiles
 > Task :app:generateReleaseResources
 > Task :app:javaPreCompileRelease
 > Task :app:mapReleaseSourceSetPaths
@@ -48,34 +49,34 @@ Calculating task graph as no cached configuration is available for tasks: assemb
 > Task :app:checkReleaseAarMetadata
 > Task :app:mergeReleaseJniLibFolders
 > Task :app:packageReleaseResources
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
+> Task :app:parseReleaseLocalResources
 > Task :app:mergeReleaseNativeLibs
+> Task :app:mergeReleaseResources
 
 > Task :app:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so.
 
-> Task :app:parseReleaseLocalResources
-> Task :app:processReleaseMainManifest
-> Task :app:processReleaseManifest
+> Task :app:mergeReleaseArtProfile
 > Task :app:extractReleaseNativeSymbolTables
 > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseStartupProfile
-> Task :app:mergeReleaseArtProfile
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:processApplicationManifestReleaseForBundle
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:collectReleaseDependencies
 > Task :app:mergeReleaseAssets
 > Task :app:compressReleaseAssets
-> Task :app:checkReleaseDuplicateClasses
-> Task :app:processApplicationManifestReleaseForBundle
-> Task :app:mergeReleaseResources
-> Task :app:extractReleaseVersionControlInfo
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
-> Task :app:collectReleaseDependencies
-> Task :app:sdkReleaseDependencyData
 > Task :app:processReleaseResources
+> Task :app:sdkReleaseDependencyData
 > Task :app:bundleReleaseResources
 > Task :app:expandReleaseL8ArtProfileWildcards
 > Task :app:kspReleaseKotlin
@@ -87,12 +88,12 @@ Unable to strip the following libraries, packaging them as they are: libandroidx
 > Task :app:transformReleaseClassesWithAsm
 > Task :app:generateReleaseLintVitalReportModel
 > Task :app:mergeReleaseGeneratedProguardFiles
-> Task :app:expandReleaseArtProfileWildcards
 > Task :app:mergeReleaseJavaResource
+> Task :app:expandReleaseArtProfileWildcards
 > Task :app:lintVitalAnalyzeRelease
-> Task :app:minifyReleaseWithR8
 > Task :app:lintVitalReportRelease
 > Task :app:lintVitalRelease
+> Task :app:minifyReleaseWithR8
 
 > Task :app:l8DexDesugarLibRelease
 Info: Proguard configuration rule does not match anything: `-keepclassmembers class j$.util.concurrent.ConcurrentHashMap$TreeBin {
@@ -132,9 +133,9 @@ Info: Proguard configuration rule does not match anything: `-keepclassmembers cl
 > Task :app:packageRelease
 > Task :app:assembleRelease
 > Task :app:createReleaseApkListingFileRedirect
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784313319575.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784313623275.json
 
-BUILD SUCCESSFUL in 2m 28s
+BUILD SUCCESSFUL in 2m 18s
 56 actionable tasks: 56 executed
 Configuration cache entry stored.
 === apk search ===
