@@ -12,6 +12,7 @@ import co.nedlink.twende.data.vehicle.CarBodyRepository
 import co.nedlink.twende.data.vehicle.TripComputer
 import co.nedlink.twende.model.BodyStatus
 import co.nedlink.twende.model.DtcReport
+import co.nedlink.twende.model.SensorScan
 import co.nedlink.twende.model.TripStats
 import co.nedlink.twende.model.BtState
 import co.nedlink.twende.model.Door
@@ -61,6 +62,19 @@ class VehicleViewModel @Inject constructor(
     /* ---- check-engine (OBD-II Mode 03) ---- */
     val dtc = MutableStateFlow(DtcReport())
     val scanningDtc = MutableStateFlow(false)
+
+    /* ---- sensor scan ---- */
+    val sensorScan = MutableStateFlow(SensorScan())
+    val scanningSensors = MutableStateFlow(false)
+
+    fun scanSensors() {
+        if (scanningSensors.value) return
+        viewModelScope.launch {
+            scanningSensors.value = true
+            sensorScan.value = obd.scanSensors() ?: SensorScan(scanned = true)
+            scanningSensors.value = false
+        }
+    }
 
     fun scanDtcs() {
         if (scanningDtc.value) return
