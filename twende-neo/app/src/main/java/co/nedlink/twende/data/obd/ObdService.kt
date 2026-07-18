@@ -166,7 +166,6 @@ class ObdService : Service() {
                     SensorInfo("010A", "Fuel pressure", false),
                     SensorInfo("0106", "Short-term fuel trim", false),
                 ),
-            ),
             )
         } else runCatching {
             if (!elm.isConnected) {
