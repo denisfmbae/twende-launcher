@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="220dp" android:height="168dp"
+    android:viewportWidth="220" android:viewportHeight="168">
+
+    <!-- wheels (peek out beneath the body) -->
+    <path android:pathData="M40,114 h24 q10,0 10,10 v18 q0,10 -10,10 h-24 q-10,0 -10,-10 v-18 q0,-10 10,-10 z"
+        android:fillColor="#10151D" android:strokeColor="#33404F" android:strokeWidth="2"/>
+    <path android:pathData="M156,114 h24 q10,0 10,10 v18 q0,10 -10,10 h-24 q-10,0 -10,-10 v-18 q0,-10 10,-10 z"
+        android:fillColor="#10151D" android:strokeColor="#33404F" android:strokeWidth="2"/>
+
+    <!-- body shell -->
+    <path android:pathData="M34,140 v-46 q0,-24 16,-32 l14,-22 q8,-12 46,-12 q38,0 46,12 l14,22 q16,8 16,32 v46 q0,10 -12,10 h-128 q-12,0 -12,-10 z"
+        android:fillColor="#17224A" android:strokeColor="#3BE3FF" android:strokeWidth="3"
+        android:strokeLineJoin="round"/>
+
+    <!-- rear windscreen -->
+    <path android:pathData="M62,46 q10,-14 48,-14 q38,0 48,14 l10,18 q-26,-8 -58,-8 q-32,0 -58,8 z"
+        android:fillColor="#0C2A40" android:strokeColor="#9FE8FF" android:strokeWidth="2"/>
+
+    <!-- roof sheen -->
+    <path android:pathData="M66,30 q44,-10 88,0"
+        android:fillColor="#00000000" android:strokeColor="#9FE8FF" android:strokeWidth="2"/>
+
+    <!-- wing mirrors -->
+    <path android:pathData="M54,58 l-14,5 v8 l14,-3 z"
+        android:fillColor="#17224A" android:strokeColor="#3BE3FF" android:strokeWidth="1.5"/>
+    <path android:pathData="M166,58 l14,5 v8 l-14,-3 z"
+        android:fillColor="#17224A" android:strokeColor="#3BE3FF" android:strokeWidth="1.5"/>
+
+    <!-- full-width taillight bar + inner highlight -->
+    <path android:pathData="M52,92 h116 q8,0 8,8 v5 q0,8 -8,8 h-116 q-8,0 -8,-8 v-5 q0,-8 8,-8 z"
+        android:fillColor="#FF2E8C"/>
+    <path android:pathData="M58,96 h104 v3 h-104 z" android:fillColor="#FF8FC4"/>
+
+    <!-- bumper -->
+    <path android:pathData="M42,122 h136 q8,0 8,8 v6 q0,8 -8,8 h-136 q-8,0 -8,-8 v-6 q0,-8 8,-8 z"
+        android:fillColor="#0B1233" android:strokeColor="#662BB9DF" android:strokeWidth="1.6"/>
+
+    <!-- number plate -->
+    <path android:pathData="M92,126 h36 q3,0 3,3 v10 q0,3 -3,3 h-36 q-3,0 -3,-3 v-10 q0,-3 3,-3 z"
+        android:fillColor="#C9D6E4"/>
+
+    <!-- emblem -->
+    <path android:pathData="M110,74 m-4,0 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0"
+        android:fillColor="#3BE3FF"/>
+</vector>

@@ -156,15 +156,10 @@ class ObdService : Service() {
                     SensorInfo("010C", "Engine RPM", false),
                     SensorInfo("010D", "Vehicle speed", false),
                     SensorInfo("0105", "Coolant temperature", false),
-                    SensorInfo("0104", "Calculated engine load", false),
+                    SensorInfo("0104", "Engine load", false),
                     SensorInfo("0111", "Throttle position", false),
                     SensorInfo("012F", "Fuel level", false),
-                    SensorInfo("0142", "Control module voltage", false),
-                    SensorInfo("010F", "Intake air temperature", false),
-                    SensorInfo("0110", "Mass air flow (MAF)", false),
-                    SensorInfo("010B", "Intake manifold pressure", false),
-                    SensorInfo("010A", "Fuel pressure", false),
-                    SensorInfo("0106", "Short-term fuel trim", false),
+                    SensorInfo("0142", "Battery voltage", false),
                 ),
             )
         } else runCatching {

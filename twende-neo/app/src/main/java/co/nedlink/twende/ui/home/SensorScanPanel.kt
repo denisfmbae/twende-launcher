@@ -77,7 +77,9 @@ fun SensorScanPanel(
                 Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(scan.sensors, key = { it.pid }) { s ->
+                // Only sensors the car actually answered are worth screen space —
+                // a wall of grey "not available" rows is noise, not information.
+                items(scan.sensors.filter { it.supported }, key = { it.pid }) { s ->
                     Row(
                         Modifier.fillMaxWidth().glass(14).padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -98,11 +100,17 @@ fun SensorScanPanel(
                         )
                     }
                 }
-                if (scan.sensors.isEmpty()) {
+                if (scan.sensors.none { it.supported }) {
                     items(listOf(0)) {
                         Text(
-                            "No scan yet.",
-                            fontSize = 14.sp, color = Twende.Dim,
+                            when {
+                                !scan.scanned -> "No scan yet. Tap SCAN below."
+                                !scan.connected ->
+                                    "No OBD adapter connected.\n\nPlug an ELM327 dongle (Bluetooth, ~KES 1,500) into the car's OBD-II port — usually under the steering column — then scan again. Only sensors the car physically reports will appear here."
+                                else ->
+                                    "Adapter connected, but this car reported none of the standard sensors."
+                            },
+                            fontSize = 14.sp, color = Twende.Dim, lineHeight = 20.sp,
                             modifier = Modifier.padding(20.dp),
                         )
                     }

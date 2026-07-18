@@ -3,14 +3,13 @@ package co.nedlink.twende.ui.home
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,13 +34,10 @@ import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 
 /**
- * The background-music panel. Appears only when something is actually playing.
- *
- * Transport buttons are drawn on a Canvas — three triangles and a couple of bars.
- * Pulling in material-icons-extended for skip/pause would add megabytes to an APK
- * whose entire selling point is that it's 2.8 MB and starts instantly.
- *
- * Touch targets are 52dp: this gets pressed by a driver, at speed, without looking.
+ * The music panel — sized for a driver's thumb. Big title, 64dp transport
+ * buttons, and a prominent ENABLE pill when notification access hasn't been
+ * granted yet, because that grant is what turns these buttons from "hopeful
+ * key events" into a real MediaController on most head units.
  */
 @Composable
 fun NowPlayingBar(
@@ -55,12 +51,11 @@ fun NowPlayingBar(
     if (!np.active) return
 
     Row(
-        modifier.fillMaxWidth().glass(16).padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().glass(16).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Album art, or a neon placeholder when we have no metadata rights.
         Box(
-            Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(Twende.Panel),
+            Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)).background(Twende.Panel),
             contentAlignment = Alignment.Center,
         ) {
             val art = np.art
@@ -68,46 +63,56 @@ fun NowPlayingBar(
                 Image(
                     bitmap = art.asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)),
                 )
             } else {
-                Canvas(Modifier.size(20.dp)) { drawNote(Twende.Cyan) }
+                Canvas(Modifier.size(26.dp)) { drawNote(Twende.Cyan) }
             }
         }
 
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(14.dp))
 
         Column(Modifier.weight(1f)) {
             Text(
                 np.title.ifBlank { "Audio playing" },
-                fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                color = Color(0xFFE8ECF1), maxLines = 1,
+                fontSize = 22.sp, fontWeight = FontWeight.Black,
+                color = Color(0xFFF2F5F8), maxLines = 1,
             )
-            if (np.hasMetadataAccess) {
-                Text(
-                    listOfNotNull(
-                        np.artist.ifBlank { null },
-                        np.appLabel.ifBlank { null },
-                    ).joinToString(" · "),
-                    fontSize = 10.sp, color = Twende.Dim, maxLines = 1,
-                )
-            } else {
-                Text(
-                    "Tap for track info",
-                    fontSize = 10.sp, color = Twende.Cyan, maxLines = 1,
-                    modifier = Modifier.clickable { onGrantAccess() },
-                )
-            }
+            Text(
+                listOfNotNull(
+                    np.artist.ifBlank { null },
+                    np.appLabel.ifBlank { null },
+                ).joinToString(" · ").ifBlank { " " },
+                fontSize = 13.sp, color = Twende.Dim, maxLines = 1,
+            )
         }
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(10.dp))
+
+        if (!np.hasMetadataAccess) {
+            // The one-time unlock: opens the notification-access screen where the
+            // driver flips Twende on. After that, track titles, art and precise
+            // control of the playing app all light up.
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0x2200E5FF))
+                    .border(1.5.dp, Twende.Cyan, RoundedCornerShape(24.dp))
+                    .clickable { onGrantAccess() }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Text("ENABLE\nCONTROLS", fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    color = Twende.Cyan, lineHeight = 14.sp)
+            }
+            Spacer(Modifier.width(10.dp))
+        }
 
         TransportButton(onClick = onPrevious) { drawPrevious(Twende.Cyan) }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         TransportButton(onClick = onPlayPause, accent = true) {
             if (np.playing) drawPause(Twende.Cosmic) else drawPlay(Twende.Cosmic)
         }
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(8.dp))
         TransportButton(onClick = onNext) { drawNext(Twende.Cyan) }
     }
 }
@@ -120,17 +125,17 @@ private fun TransportButton(
 ) {
     Box(
         Modifier
-            .size(52.dp)
+            .size(64.dp)
             .clip(CircleShape)
             .background(if (accent) Twende.Cyan else Color(0x1AFFFFFF))
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(22.dp)) { glyph() }
+        Canvas(Modifier.size(28.dp)) { glyph() }
     }
 }
 
-/* ---------- glyphs: cheaper than an icon dependency, and they glow ---------- */
+/* ---------- glyphs ---------- */
 
 private fun DrawScope.triangle(left: Float, width: Float, color: Color, pointRight: Boolean) {
     val h = size.height
@@ -164,7 +169,6 @@ private fun DrawScope.drawPrevious(color: Color) {
     triangle(size.width * 0.45f, size.width * 0.55f, color, pointRight = false)
 }
 
-/** Placeholder when there's no album art (or no metadata access). */
 private fun DrawScope.drawNote(color: Color) {
     val r = size.width * 0.22f
     drawCircle(color, r, Offset(r, size.height - r))

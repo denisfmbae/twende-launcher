@@ -60,6 +60,11 @@ import co.nedlink.twende.vm.VehicleViewModel
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import android.app.Activity
+import android.content.Intent
+import android.view.WindowManager
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import kotlin.math.abs
 
 @Composable
@@ -72,7 +77,6 @@ fun HomeScreen(
     val bt by vehicle.btState.collectAsStateWithLifecycle()
     val carLink by vehicle.carLink.collectAsStateWithLifecycle()
     val prefs by vehicle.prefs.collectAsStateWithLifecycle()
-    val body by vehicle.bodyStatus.collectAsStateWithLifecycle()
     val trip by vehicle.trip.collectAsStateWithLifecycle()
     val dtc by vehicle.dtc.collectAsStateWithLifecycle()
     val scanningDtc by vehicle.scanningDtc.collectAsStateWithLifecycle()
@@ -81,6 +85,16 @@ fun HomeScreen(
     val scanningSensors by vehicle.scanningSensors.collectAsStateWithLifecycle()
     var simpleMode by rememberSaveable { mutableStateOf(false) }
     var showSensors by rememberSaveable { mutableStateOf(false) }
+    var screenOff by rememberSaveable { mutableStateOf(false) }
+    val activity = LocalContext.current as? Activity
+    LaunchedEffect(screenOff) {
+        activity?.window?.let { w ->
+            val lp = w.attributes
+            lp.screenBrightness =
+                if (screenOff) 0.02f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            w.attributes = lp
+        }
+    }
     val pois by vehicle.pois.collectAsStateWithLifecycle()
     val searching by vehicle.searching.collectAsStateWithLifecycle()
     val apps by launcher.apps.collectAsStateWithLifecycle()
@@ -129,9 +143,7 @@ fun HomeScreen(
                     CarSimulationWidget(
                         speedKmh = telemetry.speedKmh,
                         heading = heading,
-                        body = body,
                         glow = prefs.glowIntensity,
-                        onToggle = vehicle::toggleDoor,
                     )
                 }
                 Column(Modifier.weight(0.30f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -174,6 +186,9 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+            QuickRail(onScreenOff = { screenOff = true })
+
+            Spacer(Modifier.height(8.dp))
             BottomDock(
                 apps = launcher.commuterApps.ifEmpty { apps.take(8) },
                 accessories = accessories,
@@ -193,6 +208,16 @@ fun HomeScreen(
                 onClose = { showSensors = false },
             )
         }
+
+        if (screenOff) {
+            Box(
+                Modifier.fillMaxSize().background(Color.Black)
+                    .clickable { screenOff = false },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("tap to wake", color = Color(0xFF1B2430), fontSize = 12.sp)
+            }
+        }
     }
 }
 
@@ -203,8 +228,22 @@ private fun TopStatusBar(bt: Boolean, btLabel: String, carLink: Boolean, glow: F
     val time by produceState(initialValue = LocalDateTime.now()) {
         while (true) { value = LocalDateTime.now(); delay(1000) }
     }
+    val ctx = LocalContext.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(time.format(DateTimeFormatter.ofPattern("HH:mm")), style = neonStyle(Twende.Cyan, 34, glow))
+        Text(
+            time.format(DateTimeFormatter.ofPattern("HH:mm")),
+            style = neonStyle(Twende.Cyan, 34, glow),
+            modifier = Modifier.clickable {
+                // Twende shows the unit's own system clock; if it's wrong, the fix
+                // is the unit's date/time settings — one tap away from here.
+                runCatching {
+                    ctx.startActivity(
+                        Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+            },
+        )
         Spacer(Modifier.width(14.dp))
         Text(time.format(DateTimeFormatter.ofPattern("EEE d MMM")).uppercase(),
             color = Twende.Dim, fontSize = 12.sp, letterSpacing = 2.sp)
@@ -434,5 +473,57 @@ private fun SimpleMode(
                 }
             }
         }
+    }
+}
+
+
+/* ---------- quick actions: one tap, glove-sized ---------- */
+
+@Composable
+private fun QuickRail(onScreenOff: () -> Unit) {
+    val ctx = LocalContext.current
+    fun open(action: String) {
+        runCatching {
+            ctx.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        QuickButton("BT", "Bluetooth", Modifier.weight(1f)) {
+            open(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+        }
+        QuickButton("WIFI", "Wi-Fi", Modifier.weight(1f)) {
+            open(android.provider.Settings.ACTION_WIFI_SETTINGS)
+        }
+        QuickButton("♪", "Music", Modifier.weight(1f)) {
+            runCatching {
+                ctx.startActivity(
+                    Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }
+        }
+        QuickButton("⏻", "Screen off", Modifier.weight(1f), accent = true) { onScreenOff() }
+    }
+}
+
+@Composable
+private fun QuickButton(
+    glyph: String,
+    label: String,
+    modifier: Modifier = Modifier,
+    accent: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier
+            .height(64.dp)
+            .glass(16)
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(glyph, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+            color = if (accent) Twende.Magenta else Twende.Cyan)
+        Text(label, fontSize = 10.sp, color = Twende.Dim)
     }
 }
