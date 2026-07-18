@@ -129,44 +129,44 @@ class ObdService : Service() {
     /** One-shot fault-code scan (OBD-II Mode 03). Runs on IO, never the UI thread. */
     private suspend fun scanDtcs(): DtcReport = withContext(Dispatchers.IO) {
         if (simulated || elmMac.isBlank()) {
-            // Bench demo so the feature is visible without a car attached.
-            DtcReport(
-                scanned = true, milOn = true, simulated = true,
-                codes = listOf(
-                    Dtc("P0301", DtcCatalog.describe("P0301")),
-                    Dtc("P0420", DtcCatalog.describe("P0420")),
-                ),
-            )
+            // No adapter attached: report that honestly. Inventing P0301/P0420
+            // here made the app claim real engine faults on a healthy car, which
+            // is worse than useless — a driver could act on it.
+            DtcReport(scanned = true, milOn = false, simulated = true,
+                connected = false, codes = emptyList())
         } else runCatching {
             if (!elm.isConnected) {
                 val adapter = (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
                 elm.connect(adapter, elmMac)
             }
-            elm.readDtcs()
-        }.getOrElse { DtcReport(scanned = true) }
+            elm.readDtcs().copy(connected = true)
+        }.getOrElse { DtcReport(scanned = true, connected = false) }
     }
 
     /** Probe which standard OBD-II sensors this car exposes. */
     private suspend fun scanSensors(): SensorScan = withContext(Dispatchers.IO) {
         if (simulated || elmMac.isBlank()) {
-            // Bench demo: present the sensors the simulator "answers" so the UI is
-            // populated without a dongle, clearly flagged as simulated.
+            // No adapter: list what WOULD be probed, but claim nothing. Every
+            // sensor is marked unsupported with no sample value, because with
+            // nothing plugged into the OBD port the app genuinely does not know
+            // which sensors this car exposes.
             SensorScan(
                 scanned = true, connected = false, simulated = true,
                 sensors = listOf(
-                    SensorInfo("010C","Engine RPM",true,"3532 rpm"),
-                    SensorInfo("010D","Vehicle speed",true,"95 km/h"),
-                    SensorInfo("0105","Coolant temperature",true,"91 °C"),
-                    SensorInfo("0104","Calculated engine load",true,"63 %"),
-                    SensorInfo("0111","Throttle position",true,"42 %"),
-                    SensorInfo("012F","Fuel level",true,"67 %"),
-                    SensorInfo("0142","Control module voltage",true,"14.1 V"),
-                    SensorInfo("010F","Intake air temperature",false),
-                    SensorInfo("0110","Mass air flow (MAF)",false),
-                    SensorInfo("010B","Intake manifold pressure",false),
-                    SensorInfo("010A","Fuel pressure",false),
-                    SensorInfo("0106","Short-term fuel trim",false),
+                    SensorInfo("010C", "Engine RPM", false),
+                    SensorInfo("010D", "Vehicle speed", false),
+                    SensorInfo("0105", "Coolant temperature", false),
+                    SensorInfo("0104", "Calculated engine load", false),
+                    SensorInfo("0111", "Throttle position", false),
+                    SensorInfo("012F", "Fuel level", false),
+                    SensorInfo("0142", "Control module voltage", false),
+                    SensorInfo("010F", "Intake air temperature", false),
+                    SensorInfo("0110", "Mass air flow (MAF)", false),
+                    SensorInfo("010B", "Intake manifold pressure", false),
+                    SensorInfo("010A", "Fuel pressure", false),
+                    SensorInfo("0106", "Short-term fuel trim", false),
                 ),
+            ),
             )
         } else runCatching {
             if (!elm.isConnected) {
