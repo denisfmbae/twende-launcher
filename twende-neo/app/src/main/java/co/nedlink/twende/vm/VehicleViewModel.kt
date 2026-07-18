@@ -56,7 +56,10 @@ class VehicleViewModel @Inject constructor(
     val bodyStatus: StateFlow<BodyStatus> = body.status.hot(BodyStatus())
     val trip: StateFlow<TripStats> = tripComputer.stats
 
-    fun toggleDoor(door: Door) = body.toggle(door)
+    /** Only meaningful in demo mode — a stray tap must never fake a DOOR OPEN. */
+    fun toggleDoor(door: Door) {
+        if (demoDriving.value) body.toggle(door)
+    }
     fun closeAllDoors() = body.closeAll()
 
     /* ---- check-engine (OBD-II Mode 03) ---- */
@@ -68,6 +71,7 @@ class VehicleViewModel @Inject constructor(
     fun toggleDemoDriving() {
         demoDriving.value = !demoDriving.value
         obd.setDemoDriving(demoDriving.value)
+        body.setDemoMode(demoDriving.value)      // doors follow the same switch
     }
 
     /* ---- sensor scan ---- */
