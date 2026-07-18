@@ -79,16 +79,18 @@ fun VitalsStrip(
             value = when {
                 scanning -> "Scanning…"
                 !dtc.scanned -> "Tap to scan"
+                !dtc.connected -> "No adapter"
                 faults == 0 -> "No faults"
                 else -> "$faults code" + if (faults > 1) "s" else ""
             },
             sub = when {
                 !dtc.scanned -> "reads real codes"
+                !dtc.connected -> "plug in ELM327"
                 faults > 0 -> dtc.codes.first().code
                 dtc.milOn -> "lamp on, no codes"
                 else -> "all clear"
             },
-            color = if (dtc.scanned && faults > 0) FuelRed else if (dtc.scanned) FuelGreen else Twende.Cyan,
+            color = if (dtc.scanned && faults > 0) FuelRed else if (dtc.scanned && dtc.connected) FuelGreen else Twende.Cyan,
             modifier = Modifier.weight(1.3f),
             onClick = onScan,
         )
