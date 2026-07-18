@@ -193,131 +193,197 @@ private fun DrawScope.drawCarPerspective(body: BodyStatus, speedKmh: Int, glow: 
     val cx = w / 2f
     val moving = speedKmh > 1
     val g = glow.coerceIn(0f, 1f)
-    // Bright rim regardless of motion so the car always reads clearly; brighter when moving.
-    val rim = Twende.Cyan.copy(alpha = 0.75f + 0.25f * if (moving) g else 0.4f)
+    val rim = Twende.Cyan.copy(alpha = 0.80f + 0.20f * if (moving) g else 0.4f)
 
-    // Bigger car: fills more of the widget than before.
-    val rearY = h * 0.74f
-    val rearTopY = h * 0.44f
-    val roofFarY = h * 0.30f
-    val rearHalf = w * 0.30f
-    val frontHalf = w * 0.17f
+    // Layout — a car seen from directly behind, roof receding away from you.
+    val groundY  = h * 0.78f     // where the tyres meet the road
+    val bodyBotY = h * 0.68f     // bottom of the painted body
+    val beltY    = h * 0.50f     // beltline: body below, glass above
+    val roofY    = h * 0.33f     // top of the rear pillars
+    val roofFarY = h * 0.25f     // roof receding toward the front
+    val bodyHalf  = w * 0.27f
+    val cabinHalf = w * 0.205f
 
-    // Glossy vertical gradient — lit roof down to shadowed sills.
     val bodyBrush = Brush.verticalGradient(
-        0f to BODY_TOP, 0.45f to BODY_MID, 1f to BODY_LOW,
-        startY = roofFarY, endY = rearY,
+        0f to BODY_TOP, 0.55f to BODY_MID, 1f to BODY_LOW,
+        startY = beltY, endY = bodyBotY,
+    )
+    val cabinBrush = Brush.verticalGradient(
+        0f to BODY_MID, 1f to BODY_TOP,
+        startY = roofY, endY = beltY,
     )
 
-    // Contact shadow under the car for grounding.
+    // ---- contact shadow ----
     drawOval(
         Brush.radialGradient(
-            listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent),
-            center = Offset(cx, rearY + h * 0.015f), radius = w * 0.34f,
+            listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent),
+            center = Offset(cx, groundY), radius = w * 0.32f,
         ),
-        topLeft = Offset(cx - w * 0.34f, rearY - h * 0.03f),
-        size = Size(w * 0.68f, h * 0.12f),
+        topLeft = Offset(cx - w * 0.32f, groundY - h * 0.035f),
+        size = Size(w * 0.64f, h * 0.09f),
     )
 
-    // ---- body silhouette (rear face nearest, roof receding forward) ----
-    val bodyPath = Path().apply {
-        moveTo(cx - rearHalf, rearY)
-        lineTo(cx - rearHalf, rearTopY)
-        lineTo(cx - frontHalf, roofFarY)
-        lineTo(cx + frontHalf, roofFarY)
-        lineTo(cx + rearHalf, rearTopY)
-        lineTo(cx + rearHalf, rearY)
+    // ---- wheels (drawn first so the body sits over them) ----
+    // Wheels are what make a shape read as "a car" at a glance.
+    val tyre = Color(0xFF11141B)
+    val tyreEdge = Color(0xFF2A3340)
+    val wheelW = w * 0.115f
+    val wheelTop = bodyBotY - h * 0.055f
+    for (sgn in listOf(-1f, 1f)) {
+        val left = cx + sgn * bodyHalf * 0.86f - wheelW / 2f
+        drawRoundRect(
+            tyre,
+            topLeft = Offset(left, wheelTop),
+            size = Size(wheelW, groundY - wheelTop),
+            cornerRadius = CornerRadius(wheelW * 0.36f),
+        )
+        drawRoundRect(
+            tyreEdge,
+            topLeft = Offset(left, wheelTop),
+            size = Size(wheelW, groundY - wheelTop),
+            cornerRadius = CornerRadius(wheelW * 0.36f),
+            style = Stroke(width = 2f),
+        )
+        // hub highlight
+        drawRoundRect(
+            Twende.Cyan.copy(alpha = 0.18f),
+            topLeft = Offset(left + wheelW * 0.28f, wheelTop + (groundY - wheelTop) * 0.30f),
+            size = Size(wheelW * 0.44f, (groundY - wheelTop) * 0.34f),
+            cornerRadius = CornerRadius(wheelW * 0.2f),
+        )
+    }
+
+    // ---- roof receding away (gives the 3D read) ----
+    val roofPath = Path().apply {
+        moveTo(cx - cabinHalf * 0.90f, roofY)
+        lineTo(cx - cabinHalf * 0.52f, roofFarY)
+        lineTo(cx + cabinHalf * 0.52f, roofFarY)
+        lineTo(cx + cabinHalf * 0.90f, roofY)
         close()
     }
-    drawPath(bodyPath, bodyBrush, style = Fill)
-    drawPath(bodyPath, rim, style = Stroke(width = 3f))
+    drawPath(roofPath, Brush.verticalGradient(listOf(BODY_LOW, BODY_MID), startY = roofFarY, endY = roofY))
+    drawPath(roofPath, rim.copy(alpha = 0.55f), style = Stroke(width = 2f))
 
-    // top highlight sheen across the roof edge
-    drawLine(
-        GLASS_HI.copy(alpha = 0.55f),
-        Offset(cx - frontHalf, roofFarY), Offset(cx + frontHalf, roofFarY),
-        strokeWidth = 2.5f,
-    )
+    // ---- cabin / greenhouse ----
+    val cabinPath = Path().apply {
+        moveTo(cx - cabinHalf, beltY)
+        lineTo(cx - cabinHalf * 0.90f, roofY)
+        lineTo(cx + cabinHalf * 0.90f, roofY)
+        lineTo(cx + cabinHalf, beltY)
+        close()
+    }
+    drawPath(cabinPath, cabinBrush)
+    drawPath(cabinPath, rim, style = Stroke(width = 2.5f))
 
-    // ---- rear windscreen (bright, clear) ----
+    // ---- rear window ----
     val glassPath = Path().apply {
-        val gTop = rearTopY + (roofFarY - rearTopY) * 0.18f
-        moveTo(cx - rearHalf * 0.70f, rearTopY + h * 0.015f)
-        lineTo(cx - frontHalf * 0.68f, gTop)
-        lineTo(cx + frontHalf * 0.68f, gTop)
-        lineTo(cx + rearHalf * 0.70f, rearTopY + h * 0.015f)
+        moveTo(cx - cabinHalf * 0.84f, beltY - h * 0.012f)
+        lineTo(cx - cabinHalf * 0.74f, roofY + h * 0.022f)
+        lineTo(cx + cabinHalf * 0.74f, roofY + h * 0.022f)
+        lineTo(cx + cabinHalf * 0.84f, beltY - h * 0.012f)
         close()
     }
     drawPath(
         glassPath,
-        Brush.verticalGradient(listOf(GLASS_HI.copy(alpha = 0.35f), Twende.Cyan.copy(alpha = 0.12f))),
+        Brush.verticalGradient(listOf(GLASS_HI.copy(alpha = 0.42f), Twende.Cyan.copy(alpha = 0.10f))),
     )
-    drawPath(glassPath, GLASS_HI.copy(alpha = 0.55f), style = Stroke(width = 1.5f))
+    drawPath(glassPath, GLASS_HI.copy(alpha = 0.6f), style = Stroke(width = 1.5f))
 
-    // ---- rear pillars accent ----
-    drawLine(rim.copy(alpha = 0.5f), Offset(cx - rearHalf, rearTopY), Offset(cx - rearHalf, rearY), strokeWidth = 2f)
-    drawLine(rim.copy(alpha = 0.5f), Offset(cx + rearHalf, rearTopY), Offset(cx + rearHalf, rearY), strokeWidth = 2f)
-
-    // ---- vivid taillight bar across the rear ----
-    val tailY = rearY - h * 0.06f
+    // ---- lower body ----
     drawRoundRect(
-        Twende.Magenta.copy(alpha = if (moving) 0.35f else 0.18f),
-        topLeft = Offset(cx - rearHalf * 1.02f, tailY - h * 0.015f),
-        size = Size(rearHalf * 2.04f, h * 0.075f),
-        cornerRadius = CornerRadius(8f),
+        bodyBrush,
+        topLeft = Offset(cx - bodyHalf, beltY),
+        size = Size(bodyHalf * 2f, bodyBotY - beltY),
+        cornerRadius = CornerRadius(w * 0.035f),
     )
     drawRoundRect(
-        Brush.horizontalGradient(listOf(Twende.Magenta, Color(0xFFFF4FA3), Twende.Magenta)),
-        topLeft = Offset(cx - rearHalf * 0.92f, tailY),
-        size = Size(rearHalf * 1.84f, h * 0.032f),
-        cornerRadius = CornerRadius(5f),
+        rim,
+        topLeft = Offset(cx - bodyHalf, beltY),
+        size = Size(bodyHalf * 2f, bodyBotY - beltY),
+        cornerRadius = CornerRadius(w * 0.035f),
+        style = Stroke(width = 2.5f),
+    )
+    // shoulder highlight
+    drawLine(
+        GLASS_HI.copy(alpha = 0.45f),
+        Offset(cx - bodyHalf * 0.9f, beltY + h * 0.012f),
+        Offset(cx + bodyHalf * 0.9f, beltY + h * 0.012f),
+        strokeWidth = 2f,
     )
 
-    // ---- open panels: warning pink overlays ----
-    drawSideDoor(body.rearLeft, true, true, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
-    drawSideDoor(body.frontLeft, true, false, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
-    drawSideDoor(body.rearRight, false, true, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
-    drawSideDoor(body.frontRight, false, false, cx, rearHalf, frontHalf, rearY, rearTopY, roofFarY)
+    // ---- tail lights ----
+    val lampY = beltY + h * 0.035f
+    val lampH = h * 0.052f
+    val lampW = bodyHalf * 0.46f
+    for (sgn in listOf(-1f, 1f)) {
+        val lx = if (sgn < 0) cx - bodyHalf * 0.94f else cx + bodyHalf * 0.94f - lampW
+        drawRoundRect(
+            Twende.Magenta.copy(alpha = if (moving) 0.32f else 0.16f),
+            topLeft = Offset(lx - 3f, lampY - 3f),
+            size = Size(lampW + 6f, lampH + 6f),
+            cornerRadius = CornerRadius(7f),
+        )
+        drawRoundRect(
+            Brush.horizontalGradient(listOf(Twende.Magenta, Color(0xFFFF5FAB))),
+            topLeft = Offset(lx, lampY),
+            size = Size(lampW, lampH),
+            cornerRadius = CornerRadius(5f),
+        )
+    }
 
+    // ---- bumper + plate ----
+    drawRoundRect(
+        Color(0xFF0A1030),
+        topLeft = Offset(cx - bodyHalf * 0.99f, bodyBotY - h * 0.075f),
+        size = Size(bodyHalf * 1.98f, h * 0.075f),
+        cornerRadius = CornerRadius(w * 0.02f),
+    )
+    drawRoundRect(
+        rim.copy(alpha = 0.45f),
+        topLeft = Offset(cx - bodyHalf * 0.99f, bodyBotY - h * 0.075f),
+        size = Size(bodyHalf * 1.98f, h * 0.075f),
+        cornerRadius = CornerRadius(w * 0.02f),
+        style = Stroke(width = 1.5f),
+    )
+    drawRoundRect(
+        Color(0xFFB9C6D6).copy(alpha = 0.55f),
+        topLeft = Offset(cx - w * 0.048f, bodyBotY - h * 0.062f),
+        size = Size(w * 0.096f, h * 0.032f),
+        cornerRadius = CornerRadius(3f),
+    )
+
+    // ---- open panels (demo mode only; nothing is invented otherwise) ----
+    if (body.frontLeft || body.rearLeft) drawOpenSide(cx, -1f, bodyHalf, beltY, bodyBotY)
+    if (body.frontRight || body.rearRight) drawOpenSide(cx, 1f, bodyHalf, beltY, bodyBotY)
     if (body.trunk) {
-        drawRoundRect(WARN.copy(alpha = 0.6f),
-            topLeft = Offset(cx - rearHalf * 0.8f, rearTopY + h * 0.02f),
-            size = Size(rearHalf * 1.6f, h * 0.05f), cornerRadius = CornerRadius(6f))
+        drawRoundRect(WARN.copy(alpha = 0.55f),
+            topLeft = Offset(cx - bodyHalf * 0.8f, beltY + h * 0.005f),
+            size = Size(bodyHalf * 1.6f, h * 0.03f), cornerRadius = CornerRadius(5f))
     }
     if (body.hood) {
-        drawRoundRect(WARN.copy(alpha = 0.6f),
-            topLeft = Offset(cx - frontHalf * 0.9f, roofFarY - h * 0.02f),
-            size = Size(frontHalf * 1.8f, h * 0.04f), cornerRadius = CornerRadius(6f))
+        drawRoundRect(WARN.copy(alpha = 0.55f),
+            topLeft = Offset(cx - cabinHalf * 0.5f, roofFarY - h * 0.018f),
+            size = Size(cabinHalf, h * 0.028f), cornerRadius = CornerRadius(5f))
     }
 }
 
-private fun DrawScope.drawSideDoor(
-    open: Boolean, left: Boolean, near: Boolean,
-    cx: Float, rearHalf: Float, frontHalf: Float,
-    rearY: Float, rearTopY: Float, roofFarY: Float,
+/** A pink panel on one flank when a door on that side is reported open. */
+private fun DrawScope.drawOpenSide(
+    cx: Float, sgn: Float, bodyHalf: Float, beltY: Float, bodyBotY: Float,
 ) {
-    if (!open) return
-    val sign = if (left) -1f else 1f
-    val midHalf = (rearHalf + frontHalf) / 2f
-    val midBottomY = (rearY + roofFarY) / 2f + (rearTopY - roofFarY) * 0.15f
-    val midTopY = (rearTopY + roofFarY) / 2f
-
-    val xA: Float; val botA: Float; val topA: Float
-    val xB: Float; val botB: Float; val topB: Float
-    if (near) {
-        xA = sign * rearHalf; botA = rearY; topA = rearTopY
-        xB = sign * midHalf;  botB = midBottomY; topB = midTopY
-    } else {
-        xA = sign * midHalf;  botA = midBottomY; topA = midTopY
-        xB = sign * frontHalf; botB = roofFarY;  topB = roofFarY
-    }
-    val path = Path().apply {
-        moveTo(cx + xA, botA)
-        lineTo(cx + xA, topA)
-        lineTo(cx + xB, topB)
-        lineTo(cx + xB, botB)
-        close()
-    }
-    drawPath(path, WARN.copy(alpha = 0.6f))
-    drawPath(path, WARN, style = Stroke(width = 2.5f))
+    val wdt = bodyHalf * 0.30f
+    val x = if (sgn < 0) cx - bodyHalf else cx + bodyHalf - wdt
+    drawRoundRect(
+        WARN.copy(alpha = 0.55f),
+        topLeft = Offset(x, beltY),
+        size = Size(wdt, bodyBotY - beltY),
+        cornerRadius = CornerRadius(6f),
+    )
+    drawRoundRect(
+        WARN,
+        topLeft = Offset(x, beltY),
+        size = Size(wdt, bodyBotY - beltY),
+        cornerRadius = CornerRadius(6f),
+        style = Stroke(width = 2.5f),
+    )
 }
