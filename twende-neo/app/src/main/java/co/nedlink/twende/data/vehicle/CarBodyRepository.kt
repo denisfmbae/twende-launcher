@@ -48,7 +48,21 @@ class CarBodyRepository @Inject constructor(
     val status: StateFlow<BodyStatus> = _status
 
     private val foreground = MutableStateFlow(true)
+    private val demoMode = MutableStateFlow(false)
     @Volatile private var lastManualMs = 0L
+
+    /**
+     * Door activity is only ever simulated while the driver has explicitly asked
+     * for a demo. A generic dongle cannot read doors, so outside demo mode the
+     * app must show nothing rather than invent a "DOOR OPEN" warning on a car
+     * whose doors are all shut.
+     */
+    fun setDemoMode(on: Boolean) {
+        demoMode.value = on
+        if (!on) closeAll()
+    }
+
+    fun isDemoMode(): Boolean = demoMode.value
 
     fun setAppForeground(fg: Boolean) { foreground.value = fg }
 
@@ -96,9 +110,8 @@ class CarBodyRepository @Inject constructor(
         var i = 0
         while (scope.isActive) {
             foreground.first { it }                       // suspend (zero cost) until foreground
-            val simulated = prefsRepo.prefs.first().obdSimulated
             val idle = System.currentTimeMillis() - lastManualMs > 12_000
-            if (simulated && idle) {
+            if (demoMode.value && idle) {
                 val d = sequence[i % sequence.size]; i++
                 _status.value = _status.value.withDoor(d, true, BodyStatus.Source.SIMULATOR)
                 delay(2500)
