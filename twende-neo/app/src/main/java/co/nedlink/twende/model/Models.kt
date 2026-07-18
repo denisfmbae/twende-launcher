@@ -31,6 +31,7 @@ data class DtcReport(
     val milOn: Boolean = false,          // is the check-engine lamp commanded on
     val codes: List<Dtc> = emptyList(),
     val simulated: Boolean = false,
+    val connected: Boolean = false,      // was a real ELM327 actually answering
 )
 
 /** Derived trip figures. Nothing here is read from the car — it's integrated from real telemetry. */
