@@ -35,72 +35,56 @@ themes.xml
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
 Calculating task graph as no cached configuration is available for tasks: assembleRelease
-> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preBuild UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preReleaseBuild UP-TO-DATE
 > Task :app:buildKotlinToolingMetadata
 > Task :app:generateReleaseResValues
 > Task :app:createReleaseCompatibleScreenManifests
-> Task :app:extractProguardFiles
 > Task :app:generateReleaseResources
-> Task :app:extractDeepLinksRelease
-> Task :app:packageReleaseResources
-> Task :app:mapReleaseSourceSetPaths
-> Task :app:checkReleaseAarMetadata
-> Task :app:parseReleaseLocalResources
 > Task :app:javaPreCompileRelease
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:extractDeepLinksRelease
+> Task :app:checkReleaseAarMetadata
+> Task :app:extractProguardFiles
 > Task :app:mergeReleaseJniLibFolders
-> Task :app:mergeReleaseArtProfile
+> Task :app:packageReleaseResources
 > Task :app:mergeReleaseNativeLibs
+> Task :app:parseReleaseLocalResources
+> Task :app:processReleaseMainManifest
+> Task :app:mergeReleaseResources
 
 > Task :app:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so.
 
-> Task :app:extractReleaseNativeSymbolTables
-> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:processReleaseMainManifest
 > Task :app:processReleaseManifest
-> Task :app:processReleaseManifestForPackage
+> Task :app:extractReleaseNativeSymbolTables
+> Task :app:mergeReleaseArtProfile
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
 > Task :app:mergeReleaseStartupProfile
+> Task :app:processReleaseManifestForPackage
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
-> Task :app:checkReleaseDuplicateClasses
 > Task :app:mergeReleaseAssets
 > Task :app:compressReleaseAssets
+> Task :app:checkReleaseDuplicateClasses
 > Task :app:processApplicationManifestReleaseForBundle
 > Task :app:extractReleaseVersionControlInfo
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
 > Task :app:collectReleaseDependencies
-> Task :app:sdkReleaseDependencyData
-> Task :app:expandReleaseL8ArtProfileWildcards
-> Task :app:mergeReleaseResources
 > Task :app:processReleaseResources
+> Task :app:sdkReleaseDependencyData
 > Task :app:bundleReleaseResources
-
+> Task :app:expandReleaseL8ArtProfileWildcards
 > Task :app:kspReleaseKotlin
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
-    1. Kotlin compile daemon is ready
 
 > Task :app:compileReleaseKotlin FAILED
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:111:17 Unresolved reference 'Spacer'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:111:33 Unresolved reference 'height'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:118:34 Unresolved reference 'clip'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:125:34 Unresolved reference 'clickable'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:129:17 Unresolved reference 'Spacer'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:129:33 Unresolved reference 'height'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:145:17 Unresolved reference 'Spacer'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:145:33 Unresolved reference 'height'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:154:34 Unresolved reference 'clip'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:154:39 Unresolved reference 'RoundedCornerShape'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:156:85 Unresolved reference 'RoundedCornerShape'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:157:34 Unresolved reference 'clickable'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:172:21 Unresolved reference 'Spacer'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:172:37 Unresolved reference 'height'.
-e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:176:45 Unresolved reference 'clickable'.
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784474759712.json
+e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:126:34 Unresolved reference 'background'.
+e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:162:34 Unresolved reference 'background'.
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784474878226.json
 
 FAILURE: Build failed with an exception.
 
@@ -146,6 +130,36 @@ org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:com
 	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
+	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:116)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:138)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:123)
+	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
+	at org.gradle.execution.DryRunBuildExecutionAction.execute(DryRunBuildExecutionAction.java:51)
+	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
+	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
+	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$10(DefaultBuildLifecycleController.java:313)
+	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:266)
+	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$8(StateTransitionController.java:177)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:44)
+	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:177)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:304)
+	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
+	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:181)
+	at org.gradle.composite.internal.DefaultBuildController.access$000(DefaultBuildController.java:50)
+	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.lambda$run$0(DefaultBuildController.java:198)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
+	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:198)
 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
@@ -273,6 +287,36 @@ Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionExcept
 	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
+	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:116)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:138)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:123)
+	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
+	at org.gradle.execution.DryRunBuildExecutionAction.execute(DryRunBuildExecutionAction.java:51)
+	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
+	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:200)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:195)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
+	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$10(DefaultBuildLifecycleController.java:313)
+	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:266)
+	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$8(StateTransitionController.java:177)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:44)
+	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:177)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:304)
+	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:264)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:128)
+	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:181)
+	at org.gradle.composite.internal.DefaultBuildController.access$000(DefaultBuildController.java:50)
+	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.lambda$run$0(DefaultBuildController.java:198)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:80)
+	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:198)
 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
@@ -309,7 +353,7 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 33s
+BUILD FAILED in 35s
 37 actionable tasks: 37 executed
 Configuration cache entry stored.
 === apk search ===
