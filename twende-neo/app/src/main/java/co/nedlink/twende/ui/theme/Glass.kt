@@ -47,10 +47,10 @@ fun CosmicBackground(modifier: Modifier = Modifier.fillMaxSize()) {
                     return@onDrawBehind
                 }
                 drawRect(Brush.radialGradient(
-                    listOf(Color(0x3300E5FF), Color.Transparent),
+                    listOf(Twende.Cyan.copy(alpha = hiAlpha), Color.Transparent),
                     center = Offset(size.width * 0.82f, size.height * 0.1f), radius = size.width * 0.5f))
                 drawRect(Brush.radialGradient(
-                    listOf(Color(0x26FF007F), Color.Transparent),
+                    listOf(Twende.Magenta.copy(alpha = loAlpha), Color.Transparent),
                     center = Offset(size.width * 0.08f, size.height * 0.95f), radius = size.width * 0.45f))
                 val horizon = size.height * 0.55f
                 var x = -size.width

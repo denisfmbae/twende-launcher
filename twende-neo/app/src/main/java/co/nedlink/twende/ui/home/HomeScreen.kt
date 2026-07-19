@@ -120,7 +120,7 @@ fun HomeScreen(
                 bt = bt.hfpConnected || bt.a2dpConnected,
                 btLabel = bt.deviceName?.let { n -> bt.batteryPct?.let { "$n · $it%" } ?: n } ?: "Not connected",
                 carLink = carLink.connected,
-                glow = prefs.glowIntensity,
+                glow = Twende.glowLevel,
                 simpleMode = simpleMode,
                 onToggleSimple = { simpleMode = !simpleMode },
             )
@@ -141,7 +141,7 @@ fun HomeScreen(
             Speedometer(
                 speedKmh = telemetry.speedKmh,
                 limitKmh = prefs.speedLimitKmh,
-                glow = prefs.glowIntensity,
+                glow = Twende.glowLevel,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
 

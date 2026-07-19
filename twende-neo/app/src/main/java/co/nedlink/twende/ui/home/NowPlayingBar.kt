@@ -49,6 +49,30 @@ fun NowPlayingBar(
     onOpenLibrary: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // Full-width banner when notification access isn't granted yet — cannot be missed.
+    if (!np.hasMetadataAccess) {
+        Row(
+            modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Twende.Cyan.copy(alpha = 0.14f))
+                .border(1.5.dp, Twende.Cyan, RoundedCornerShape(14.dp))
+                .clickable { onGrantAccess() }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("♬", fontSize = 26.sp, color = Twende.Cyan)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text("TAP TO ENABLE MUSIC CONTROLS", fontSize = 14.sp,
+                    fontWeight = FontWeight.Black, color = Twende.Cyan)
+                Text("Grants track name, album art and play/pause control",
+                    fontSize = 11.sp, color = Twende.Dim)
+            }
+            Text("›", fontSize = 28.sp, color = Twende.Cyan)
+        }
+        Spacer(Modifier.height(6.dp))
+    }
+
     Row(
         modifier.fillMaxWidth().glass(16).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -84,23 +108,7 @@ fun NowPlayingBar(
 
         Spacer(Modifier.width(10.dp))
 
-        if (!np.hasMetadataAccess) {
-            // The one-time unlock: opens the notification-access screen where the
-            // driver flips Twende on. After that, track titles, art and precise
-            // control of the playing app all light up.
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0x2200E5FF))
-                    .border(1.5.dp, Twende.Cyan, RoundedCornerShape(24.dp))
-                    .clickable { onGrantAccess() }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                Text("ENABLE\nCONTROLS", fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                    color = Twende.Cyan, lineHeight = 14.sp)
-            }
-            Spacer(Modifier.width(10.dp))
-        }
+
 
         TransportButton(onClick = onPrevious) { drawPrevious(Twende.Cyan) }
         Spacer(Modifier.width(8.dp))
