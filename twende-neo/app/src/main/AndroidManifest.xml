@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" tools:targetApi="s" />
 
+    <!-- Local music: read songs from the Music folder / SD card. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
     <!--
       Android 11+ hides other packages unless we declare what we need to see.
       A launcher must resolve LAUNCHER activities to build its drawer, and the

@@ -44,6 +44,7 @@ import javax.inject.Singleton
 @Singleton
 class NowPlayingRepository @Inject constructor(
     @ApplicationContext private val ctx: Context,
+    private val local: co.nedlink.twende.data.music.LocalMusicRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _state = MutableStateFlow(NowPlaying())
@@ -101,6 +102,17 @@ class NowPlayingRepository @Inject constructor(
     }
 
     private fun refresh() {
+        // Twende's own local player outranks external sessions: when it's the
+        // thing making sound, the bar reflects and controls it directly.
+        val l = local.state.value
+        if (l.active) {
+            _state.value = NowPlaying(
+                active = true, playing = l.playing,
+                title = l.title, artist = l.artist,
+                appLabel = "Twende Music", hasMetadataAccess = true,
+            )
+            return
+        }
         val access = hasMetadataAccess()
         val c = controller()
 
@@ -139,11 +151,20 @@ class NowPlayingRepository @Inject constructor(
 
     /* ---------- transport ---------- */
 
-    fun next() = control(KeyEvent.KEYCODE_MEDIA_NEXT) { it.skipToNext() }
-    fun previous() = control(KeyEvent.KEYCODE_MEDIA_PREVIOUS) { it.skipToPrevious() }
+    fun next() {
+        if (local.state.value.active) { local.next(); return }
+        control(KeyEvent.KEYCODE_MEDIA_NEXT) { it.skipToNext() }
+    }
+    fun previous() {
+        if (local.state.value.active) { local.previous(); return }
+        control(KeyEvent.KEYCODE_MEDIA_PREVIOUS) { it.skipToPrevious() }
+    }
 
-    fun playPause() = control(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) { t ->
-        if (_state.value.playing) t.pause() else t.play()
+    fun playPause() {
+        if (local.state.value.active) { local.toggle(); return }
+        control(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) { t ->
+            if (_state.value.playing) t.pause() else t.play()
+        }
     }
 
     /**

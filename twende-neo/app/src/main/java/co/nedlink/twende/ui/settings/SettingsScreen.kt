@@ -17,6 +17,12 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,9 +40,13 @@ import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 import co.nedlink.twende.vm.SettingsViewModel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), onHome: () -> Unit = {}) {
     val p by vm.prefs.collectAsStateWithLifecycle()
+    val launcher: co.nedlink.twende.vm.LauncherViewModel = hiltViewModel()
+    val installed by launcher.apps.collectAsStateWithLifecycle()
+    val pinned = p.commuterCsv.split(',').filter { it.isNotBlank() }
 
     Box(Modifier.fillMaxSize()) {
         CosmicBackground()
@@ -84,10 +94,88 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             Column(Modifier.fillMaxWidth().glass(16).padding(14.dp)) {
                 Text("Neon glow intensity", fontSize = 13.sp, color = Twende.Cyan)
                 Slider(
-                    value = p.glowIntensity, onValueChange = vm::setGlow,
+                    value = p.glowIntensity,
+                    onValueChange = { Twende.glowLevel = it; vm.setGlow(it) },
                     valueRange = 0.2f..1.5f,
                     colors = SliderDefaults.colors(thumbColor = Twende.Cyan, activeTrackColor = Twende.Cyan),
                 )
+                Text(
+                    "Lights the halo around every card and app tile. It updates live as you drag.",
+                    fontSize = 11.sp, color = Twende.Dim,
+                )
+            }
+
+            // ---- accent colour picker ----
+            Column(Modifier.fillMaxWidth().glass(16).padding(14.dp)) {
+                Text("Accent colour", fontSize = 13.sp, color = Twende.Cyan)
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Twende.palette.forEachIndexed { i, pair ->
+                        val selected = i == p.accentIdx
+                        Box(
+                            Modifier
+                                .size(if (selected) 46.dp else 40.dp)
+                                .clip(CircleShape)
+                                .background(if (Twende.isLight) pair.second else pair.first)
+                                .border(
+                                    if (selected) 3.dp else 1.dp,
+                                    if (selected) Twende.Ink else Twende.Line,
+                                    CircleShape,
+                                )
+                                .clickable { vm.setAccent(i) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Chosen: ${Twende.accentNames.getOrElse(p.accentIdx) { "Cyan" }} — recolours the whole cockpit.",
+                    fontSize = 11.sp, color = Twende.Dim,
+                )
+            }
+
+            // ---- commuter dock customisation ----
+            Text("HOME DOCK APPS", fontSize = 10.sp, letterSpacing = 3.sp, color = Twende.Dim)
+            Column(Modifier.fillMaxWidth().glass(16).padding(14.dp)) {
+                Text(
+                    if (pinned.isEmpty())
+                        "Tap apps to pin them to the home dock (up to 8). Empty = automatic."
+                    else "${pinned.size} pinned · tap to add or remove",
+                    fontSize = 12.sp, color = Twende.Cyan,
+                )
+                Spacer(Modifier.height(10.dp))
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    installed.forEach { app ->
+                        val on = app.pkg in pinned
+                        Row(
+                            Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (on) Twende.Cyan.copy(alpha = 0.18f) else Twende.ButtonBg)
+                                .border(1.dp, if (on) Twende.Cyan else Twende.Line, RoundedCornerShape(20.dp))
+                                .clickable {
+                                    val next = pinned.toMutableList()
+                                    if (on) next.remove(app.pkg)
+                                    else if (next.size < 8) next.add(app.pkg)
+                                    vm.setCommuterCsv(next.joinToString(","))
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(if (on) "\u2713 " else "", fontSize = 12.sp, color = Twende.Cyan)
+                            Text(app.label, fontSize = 13.sp, color = Twende.Ink, maxLines = 1)
+                        }
+                    }
+                }
+                if (pinned.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "CLEAR — back to automatic",
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Twende.Magenta,
+                        modifier = Modifier.clickable { vm.setCommuterCsv("") },
+                    )
+                }
             }
 
             Text(

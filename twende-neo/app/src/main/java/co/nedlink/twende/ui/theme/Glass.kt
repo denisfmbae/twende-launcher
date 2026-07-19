@@ -25,6 +25,10 @@ fun Modifier.glass(radius: Int = 20): Modifier {
         .clip(shape)
         .background(Twende.GlassFill)
         .border(1.dp, Brush.verticalGradient(listOf(Color(0x40FFFFFF), Color(0x14FFFFFF))), shape)
+        // The Settings "glow intensity" slider drives this accent halo on every
+        // card and app tile — turn it up and the whole cockpit lights in the
+        // chosen colour; down to a whisper for night driving.
+        .border(1.5.dp, Twende.Cyan.copy(alpha = (0.06f + 0.38f * Twende.glowLevel).coerceIn(0f, 0.65f)), shape)
 }
 
 /** Cosmic backdrop: radial glow pools + a perspective grid, drawn once and cached. */

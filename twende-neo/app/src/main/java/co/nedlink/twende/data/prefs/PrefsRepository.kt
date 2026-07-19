@@ -25,6 +25,8 @@ class PrefsRepository @Inject constructor(private val store: DataStore<Preferenc
         val TANK = floatPreferencesKey("tank_litres")
         val PRICE = floatPreferencesKey("fuel_price_kes")
         val LIMIT = intPreferencesKey("speed_limit_kmh")
+        val ACCENT = intPreferencesKey("accent_idx")
+        val COMMUTER = stringPreferencesKey("commuter_csv")
     }
 
     val prefs: Flow<Prefs> = store.data.map { p ->
@@ -37,6 +39,8 @@ class PrefsRepository @Inject constructor(private val store: DataStore<Preferenc
             tankLitres = p[K.TANK] ?: 45f,
             fuelPriceKes = p[K.PRICE] ?: 0f,
             speedLimitKmh = p[K.LIMIT] ?: 0,
+            accentIdx = p[K.ACCENT] ?: 0,
+            commuterCsv = p[K.COMMUTER] ?: "",
         )
     }
 
@@ -48,4 +52,6 @@ class PrefsRepository @Inject constructor(private val store: DataStore<Preferenc
     suspend fun setTankLitres(v: Float) = store.edit { it[K.TANK] = v }
     suspend fun setFuelPrice(v: Float) = store.edit { it[K.PRICE] = v }
     suspend fun setSpeedLimit(v: Int) = store.edit { it[K.LIMIT] = v }
+    suspend fun setAccent(v: Int) = store.edit { it[K.ACCENT] = v }
+    suspend fun setCommuterCsv(v: String) = store.edit { it[K.COMMUTER] = v }
 }

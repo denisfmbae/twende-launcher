@@ -56,7 +56,7 @@ data class BtState(
 
 data class CarLinkState(val connected: Boolean = false, val peer: String? = null)
 
-data class AppEntry(val label: String, val pkg: String, val icon: Bitmap?)
+data class AppEntry(val label: String, val pkg: String, val icon: Bitmap?, val category: String = "TOOLS")
 
 /** What's coming out of the speakers, whoever is playing it. */
 data class NowPlaying(
@@ -89,6 +89,8 @@ data class Prefs(
     val tankLitres: Float = 45f,       // your tank size — drives range & cost
     val fuelPriceKes: Float = 0f,      // 0 = unset; EPRA revises pump prices monthly
     val speedLimitKmh: Int = 0,        // 0 = off. 80 = Kenyan PSV governor limit
+    val accentIdx: Int = 0,            // user-chosen neon accent (Theme.palette)
+    val commuterCsv: String = "",      // comma-separated pkgs pinned to the dock
 )
 
 enum class Door { FRONT_LEFT, FRONT_RIGHT, REAR_LEFT, REAR_RIGHT, HOOD, TRUNK }

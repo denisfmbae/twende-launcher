@@ -56,6 +56,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import co.nedlink.twende.ui.common.BigHomeButton
+import co.nedlink.twende.ui.common.BigNavButton
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import co.nedlink.twende.ui.theme.Twende
@@ -75,6 +76,9 @@ import kotlin.math.abs
 
 @Composable
 fun HomeScreen(
+    onOpenApps: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onOpenMusic: () -> Unit = {},
     vehicle: VehicleViewModel = hiltViewModel(),
     launcher: LauncherViewModel = hiltViewModel(),
 ) {
@@ -106,6 +110,7 @@ fun HomeScreen(
     val apps by launcher.apps.collectAsStateWithLifecycle()
     val accessories by launcher.accessories.collectAsStateWithLifecycle()
     val nowPlaying by launcher.nowPlaying.collectAsStateWithLifecycle()
+    val commuter by launcher.commuterApps.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize()) {
         CosmicBackground()
@@ -126,7 +131,7 @@ fun HomeScreen(
                 SimpleMode(
                     speedKmh = telemetry.speedKmh,
                     fuelPct = telemetry.fuelPct,
-                    apps = launcher.commuterApps.ifEmpty { apps.take(6) },
+                    apps = commuter.ifEmpty { apps.take(6) },
                     onLaunch = launcher::launch,
                     onSensors = { showSensors = true; vehicle.scanSensors() },
                     modifier = Modifier.weight(1f),
@@ -148,6 +153,7 @@ fun HomeScreen(
                 onPlayPause = launcher::mediaPlayPause,
                 onNext = launcher::mediaNext,
                 onGrantAccess = launcher::grantMediaAccess,
+                onOpenLibrary = onOpenMusic,
             )
 
             Spacer(Modifier.height(10.dp))
@@ -155,7 +161,7 @@ fun HomeScreen(
 
             Spacer(Modifier.height(8.dp))
             BottomDock(
-                apps = launcher.commuterApps.ifEmpty { apps.take(8) },
+                apps = commuter.ifEmpty { apps.take(8) },
                 accessories = accessories,
                 onLaunch = launcher::launch,
                 onAccessory = launcher::openAccessory,
@@ -163,10 +169,15 @@ fun HomeScreen(
             )
 
             Spacer(Modifier.height(8.dp))
-            BigHomeButton(
-                onClick = { simpleMode = false; showSensors = false },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BigNavButton("\u25a6", "APPS", widthDp = 190, onClick = onOpenApps)
+                BigHomeButton(onClick = { simpleMode = false; showSensors = false })
+                BigNavButton("\u2699", "SETUP", widthDp = 190, onClick = onOpenSettings)
+            }
             } // end else (full dashboard)
         }
 
@@ -179,6 +190,8 @@ fun HomeScreen(
                 onClose = { showSensors = false },
             )
         }
+
+        VolumeRail(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp))
 
         if (screenOff) {
             Box(
@@ -549,5 +562,43 @@ private fun Speedometer(speedKmh: Int, limitKmh: Int, glow: Float, modifier: Mod
             Text("$speedKmh", style = neonStyle(if (over) Twende.Magenta else Twende.Cyan, 84, glow))
             Text("km/h", fontSize = 16.sp, letterSpacing = 4.sp, color = Twende.Dim)
         }
+    }
+}
+
+/* ---------- volume rail: right edge, beside the (RHD) steering wheel ---------- */
+
+@Composable
+private fun VolumeRail(modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val audio = remember {
+        runCatching { ctx.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager }.getOrNull()
+    }
+    fun adjust(dir: Int) {
+        runCatching {
+            audio?.adjustStreamVolume(
+                android.media.AudioManager.STREAM_MUSIC, dir,
+                android.media.AudioManager.FLAG_SHOW_UI,
+            )
+        }
+    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        VolButton("+") { adjust(android.media.AudioManager.ADJUST_RAISE) }
+        VolButton("\u00d7") { adjust(android.media.AudioManager.ADJUST_TOGGLE_MUTE) }
+        VolButton("\u2212") { adjust(android.media.AudioManager.ADJUST_LOWER) }
+    }
+}
+
+@Composable
+private fun VolButton(glyph: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(58.dp)
+            .clip(CircleShape)
+            .background(Twende.ButtonBg)
+            .border(1.5.dp, Twende.Cyan.copy(alpha = 0.55f), CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(glyph, fontSize = 24.sp, fontWeight = FontWeight.Black, color = Twende.Cyan)
     }
 }

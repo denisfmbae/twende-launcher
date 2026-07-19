@@ -23,9 +23,25 @@ import androidx.compose.ui.unit.sp
 object Twende {
     var isLight by mutableStateOf(false)
 
+    /** User-selected accent. (night, day) pairs so day mode keeps contrast. */
+    val palette = listOf(
+        Color(0xFF00E5FF) to Color(0xFF006E96),  // Cyan
+        Color(0xFF00FF9C) to Color(0xFF00795C),  // Green
+        Color(0xFFFFC400) to Color(0xFF8A6D00),  // Amber
+        Color(0xFFFF4F9A) to Color(0xFFC2185B),  // Pink
+        Color(0xFFB388FF) to Color(0xFF5E35B1),  // Purple
+        Color(0xFFFF5252) to Color(0xFFC62828),  // Red
+    )
+    val accentNames = listOf("Cyan", "Green", "Amber", "Pink", "Purple", "Red")
+    var accentIdx by mutableStateOf(0)
+    /** Glow intensity from Settings — drives halos around every card and tile. */
+    var glowLevel by mutableStateOf(1f)
+    fun accentSwatch(i: Int) =
+        palette[i.coerceIn(0, palette.lastIndex)].let { if (isLight) it.second else it.first }
+
     val Cosmic get() = if (isLight) Color(0xFFF2F5F9) else Color(0xFF0B0C10)
     val Panel get() = if (isLight) Color(0xFFFFFFFF) else Color(0xFF12141C)
-    val Cyan get() = if (isLight) Color(0xFF006E96) else Color(0xFF00E5FF)
+    val Cyan get() = accentSwatch(accentIdx)
     val Magenta get() = if (isLight) Color(0xFFC2185B) else Color(0xFFFF007F)
     val Dim get() = if (isLight) Color(0xFF55606B) else Color(0xFF7C8794)
     val Line get() = if (isLight) Color(0x2E000000) else Color(0x26FFFFFF)

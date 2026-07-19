@@ -25,6 +25,32 @@ import co.nedlink.twende.ui.theme.Twende
  * so it can be hit with a glance-free thumb at speed.
  */
 @Composable
+fun BigNavButton(
+    glyph: String,
+    label: String,
+    widthDp: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .height(78.dp)
+            .width(widthDp.dp)
+            .clip(RoundedCornerShape(39.dp))
+            .background(Twende.ButtonBg)
+            .border(2.dp, Twende.Cyan.copy(alpha = 0.65f), RoundedCornerShape(39.dp))
+            .clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+    ) {
+        Text(glyph, fontSize = 26.sp, color = Twende.Cyan)
+        Spacer(Modifier.width(10.dp))
+        Text(label, fontSize = 20.sp, fontWeight = FontWeight.Black,
+            letterSpacing = 4.sp, color = Twende.Ink)
+    }
+}
+
+@Composable
 fun BigHomeButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier

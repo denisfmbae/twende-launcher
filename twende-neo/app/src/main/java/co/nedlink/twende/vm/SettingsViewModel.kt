@@ -24,4 +24,9 @@ class SettingsViewModel @Inject constructor(private val repo: PrefsRepository) :
     fun setTankLitres(v: Float) = viewModelScope.launch { repo.setTankLitres(v) }
     fun setFuelPrice(v: Float) = viewModelScope.launch { repo.setFuelPrice(v) }
     fun setSpeedLimit(v: Int) = viewModelScope.launch { repo.setSpeedLimit(v) }
+    fun setAccent(v: Int) {
+        co.nedlink.twende.ui.theme.Twende.accentIdx = v   // instant, before the pref lands
+        viewModelScope.launch { repo.setAccent(v) }
+    }
+    fun setCommuterCsv(v: String) = viewModelScope.launch { repo.setCommuterCsv(v) }
 }

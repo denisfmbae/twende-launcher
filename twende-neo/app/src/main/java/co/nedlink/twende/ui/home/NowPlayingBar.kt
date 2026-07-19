@@ -46,6 +46,7 @@ fun NowPlayingBar(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onGrantAccess: () -> Unit,
+    onOpenLibrary: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -53,7 +54,8 @@ fun NowPlayingBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)).background(Twende.Panel),
+            Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)).background(Twende.Panel)
+                .clickable { onOpenLibrary() },
             contentAlignment = Alignment.Center,
         ) {
             val art = np.art
@@ -73,7 +75,7 @@ fun NowPlayingBar(
         // One line, huge — readable from the driver's seat, stretching to centre
         // screen. The artist/app row is gone by request: title is the signal.
         Text(
-            np.title.ifBlank { if (np.active) "Audio playing" else "Nothing playing" },
+            np.title.ifBlank { np.appLabel.ifBlank { if (np.active) "Audio playing" else "Nothing playing" } },
             fontSize = 30.sp, fontWeight = FontWeight.Black,
             color = if (np.active) Twende.Ink else Twende.Dim,
             maxLines = 1,
