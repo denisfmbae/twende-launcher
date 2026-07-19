@@ -38,53 +38,53 @@ Calculating task graph as no cached configuration is available for tasks: assemb
 > Task :app:preBuild UP-TO-DATE
 > Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :app:preReleaseBuild UP-TO-DATE
-> Task :app:buildKotlinToolingMetadata
 > Task :app:generateReleaseResValues
-> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:buildKotlinToolingMetadata
+> Task :app:extractProguardFiles
 > Task :app:generateReleaseResources
-> Task :app:javaPreCompileRelease
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:packageReleaseResources
 > Task :app:mapReleaseSourceSetPaths
 > Task :app:extractDeepLinksRelease
 > Task :app:checkReleaseAarMetadata
-> Task :app:extractProguardFiles
+> Task :app:javaPreCompileRelease
 > Task :app:mergeReleaseJniLibFolders
-> Task :app:packageReleaseResources
-> Task :app:mergeReleaseNativeLibs
 > Task :app:parseReleaseLocalResources
-> Task :app:processReleaseMainManifest
-> Task :app:mergeReleaseResources
+> Task :app:mergeReleaseArtProfile
+> Task :app:mergeReleaseNativeLibs
 
 > Task :app:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so.
 
-> Task :app:processReleaseManifest
 > Task :app:extractReleaseNativeSymbolTables
-> Task :app:mergeReleaseArtProfile
 > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:mergeReleaseStartupProfile
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
 > Task :app:processReleaseManifestForPackage
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:mergeReleaseStartupProfile
 > Task :app:mergeReleaseShaders
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
 > Task :app:mergeReleaseAssets
-> Task :app:compressReleaseAssets
-> Task :app:checkReleaseDuplicateClasses
-> Task :app:processApplicationManifestReleaseForBundle
 > Task :app:extractReleaseVersionControlInfo
+> Task :app:processApplicationManifestReleaseForBundle
+> Task :app:compressReleaseAssets
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
 > Task :app:collectReleaseDependencies
-> Task :app:processReleaseResources
 > Task :app:sdkReleaseDependencyData
-> Task :app:bundleReleaseResources
 > Task :app:expandReleaseL8ArtProfileWildcards
+> Task :app:mergeReleaseResources
+> Task :app:processReleaseResources
+> Task :app:bundleReleaseResources
 > Task :app:kspReleaseKotlin
 
 > Task :app:compileReleaseKotlin FAILED
 e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:126:34 Unresolved reference 'background'.
 e: file:///home/runner/work/twende-launcher/twende-launcher/twende-neo/app/src/main/java/co/nedlink/twende/ui/settings/SettingsScreen.kt:162:34 Unresolved reference 'background'.
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784474878226.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784474989164.json
 
 FAILURE: Build failed with an exception.
 
@@ -353,7 +353,7 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 35s
+BUILD FAILED in 34s
 37 actionable tasks: 37 executed
 Configuration cache entry stored.
 === apk search ===
