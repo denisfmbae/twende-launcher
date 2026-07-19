@@ -29,12 +29,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.nedlink.twende.ui.theme.CosmicBackground
+import co.nedlink.twende.ui.common.BigHomeButton
 import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 import co.nedlink.twende.vm.LauncherViewModel
 
 @Composable
-fun AppDrawerScreen(vm: LauncherViewModel = hiltViewModel()) {
+fun AppDrawerScreen(vm: LauncherViewModel = hiltViewModel(), onHome: () -> Unit = {}) {
     val apps by vm.apps.collectAsStateWithLifecycle()
 
     Box(Modifier.fillMaxSize()) {
@@ -43,25 +44,30 @@ fun AppDrawerScreen(vm: LauncherViewModel = hiltViewModel()) {
             Text("ALL APPS · ${apps.size}", fontSize = 10.sp, letterSpacing = 3.sp, color = Twende.Dim)
             Spacer(Modifier.height(10.dp))
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 104.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 12.dp),
+                columns = GridCells.Adaptive(minSize = 148.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(bottom = 120.dp),
             ) {
                 itemsIndexed(apps, key = { i, a -> "${a.pkg}#$i" }) { _, app ->
                     Column(
-                        Modifier.glass(16).clickable { vm.launch(app.pkg) }.padding(vertical = 12.dp),
+                        Modifier.glass(16).clickable { vm.launch(app.pkg) }.padding(vertical = 18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         app.icon?.let {
                             Image(it.asImageBitmap(), app.label,
-                                Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)))
-                        } ?: Box(Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(Twende.Panel))
+                                Modifier.size(62.dp).clip(RoundedCornerShape(14.dp)))
+                        } ?: Box(Modifier.size(62.dp).clip(RoundedCornerShape(14.dp)).background(Twende.Panel))
                         Spacer(Modifier.height(6.dp))
-                        Text(app.label, fontSize = 10.sp, color = Twende.Dim, maxLines = 1)
+                        Text(app.label, fontSize = 14.sp, color = Twende.Ink, maxLines = 1)
                     }
                 }
             }
         }
+
+        BigHomeButton(
+            onClick = onHome,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
+        )
     }
 }

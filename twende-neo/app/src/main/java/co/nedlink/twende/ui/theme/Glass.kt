@@ -35,6 +35,13 @@ fun CosmicBackground(modifier: Modifier = Modifier.fillMaxSize()) {
             val grid = Color(0x0E00E5FF)
             onDrawBehind {
                 drawRect(Twende.Cosmic)
+                if (Twende.isLight) {
+                    // Day: a clean bright sheet with a whisper of sky gradient.
+                    drawRect(Brush.verticalGradient(
+                        listOf(Color(0x1400A0C8), Color.Transparent),
+                        endY = size.height * 0.4f))
+                    return@onDrawBehind
+                }
                 drawRect(Brush.radialGradient(
                     listOf(Color(0x3300E5FF), Color.Transparent),
                     center = Offset(size.width * 0.82f, size.height * 0.1f), radius = size.width * 0.5f))

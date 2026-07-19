@@ -65,7 +65,7 @@ fun SensorScanPanel(
                 }
                 // Big close button
                 Box(
-                    Modifier.size(56.dp).clip(CircleShape).background(Color(0x1AFFFFFF))
+                    Modifier.size(56.dp).clip(CircleShape).background(Twende.ButtonBg)
                         .clickable { onClose() },
                     contentAlignment = Alignment.Center,
                 ) { Text("✕", fontSize = 22.sp, color = Twende.Cyan) }
@@ -90,7 +90,7 @@ fun SensorScanPanel(
                         )
                         Column(Modifier.weight(1f).padding(start = 12.dp)) {
                             Text(s.name, fontSize = 15.sp, fontWeight = FontWeight.Bold,
-                                color = if (s.supported) Color(0xFFE8ECF1) else Twende.Dim)
+                                color = if (s.supported) Twende.Ink else Twende.Dim)
                             Text(s.pid, fontSize = 10.sp, color = Twende.Dim)
                         }
                         Text(

@@ -48,14 +48,12 @@ fun NowPlayingBar(
     onGrantAccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (!np.active) return
-
     Row(
         modifier.fillMaxWidth().glass(16).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)).background(Twende.Panel),
+            Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)).background(Twende.Panel),
             contentAlignment = Alignment.Center,
         ) {
             val art = np.art
@@ -63,7 +61,7 @@ fun NowPlayingBar(
                 Image(
                     bitmap = art.asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)),
+                    modifier = Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)),
                 )
             } else {
                 Canvas(Modifier.size(26.dp)) { drawNote(Twende.Cyan) }
@@ -72,20 +70,15 @@ fun NowPlayingBar(
 
         Spacer(Modifier.width(14.dp))
 
-        Column(Modifier.weight(1f)) {
-            Text(
-                np.title.ifBlank { "Audio playing" },
-                fontSize = 22.sp, fontWeight = FontWeight.Black,
-                color = Color(0xFFF2F5F8), maxLines = 1,
-            )
-            Text(
-                listOfNotNull(
-                    np.artist.ifBlank { null },
-                    np.appLabel.ifBlank { null },
-                ).joinToString(" · ").ifBlank { " " },
-                fontSize = 13.sp, color = Twende.Dim, maxLines = 1,
-            )
-        }
+        // One line, huge — readable from the driver's seat, stretching to centre
+        // screen. The artist/app row is gone by request: title is the signal.
+        Text(
+            np.title.ifBlank { if (np.active) "Audio playing" else "Nothing playing" },
+            fontSize = 30.sp, fontWeight = FontWeight.Black,
+            color = if (np.active) Twende.Ink else Twende.Dim,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
 
         Spacer(Modifier.width(10.dp))
 
@@ -125,13 +118,13 @@ private fun TransportButton(
 ) {
     Box(
         Modifier
-            .size(64.dp)
+            .size(84.dp)
             .clip(CircleShape)
-            .background(if (accent) Twende.Cyan else Color(0x1AFFFFFF))
+            .background(if (accent) Twende.Cyan else Twende.ButtonBg)
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(28.dp)) { glyph() }
+        Canvas(Modifier.size(36.dp)) { glyph() }
     }
 }
 

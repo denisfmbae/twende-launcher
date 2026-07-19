@@ -126,7 +126,7 @@ fun DtcPanel(dtc: DtcReport, modifier: Modifier = Modifier) {
         dtc.codes.take(3).forEach { d ->
             Text(
                 "${d.code} — ${d.desc}",
-                fontSize = 10.sp, color = Color(0xFFCBD4DC), maxLines = 1,
+                fontSize = 10.sp, color = Twende.Ink, maxLines = 1,
                 modifier = Modifier.padding(top = 3.dp),
             )
         }

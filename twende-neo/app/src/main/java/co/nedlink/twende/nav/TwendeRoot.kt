@@ -71,7 +71,7 @@ fun TwendeRoot() {
     ) { pad ->
         NavHost(nav, startDestination = Dest.Home.route, modifier = Modifier.padding(pad)) {
             composable(Dest.Home.route) { HomeScreen() }
-            composable(Dest.Apps.route) { AppDrawerScreen() }
+            composable(Dest.Apps.route) { AppDrawerScreen(onHome = { nav.popBackStack(Dest.Home.route, false) }) }
             composable(Dest.Settings.route) { SettingsScreen() }
         }
     }

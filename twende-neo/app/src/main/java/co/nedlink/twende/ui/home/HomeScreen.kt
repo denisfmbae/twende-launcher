@@ -52,6 +52,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.nedlink.twende.model.Accessory
 import co.nedlink.twende.model.AppEntry
 import co.nedlink.twende.ui.theme.CosmicBackground
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import co.nedlink.twende.ui.common.BigHomeButton
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
 import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 import co.nedlink.twende.ui.theme.neonStyle
@@ -127,65 +133,24 @@ fun HomeScreen(
                 )
             } else {
 
-            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                TelemetryCluster(
-                    t = telemetry,
-                    trip = trip,
-                    metric = prefs.metricUnits,
-                    glow = prefs.glowIntensity,
-                    speedLimitKmh = prefs.speedLimitKmh,
-                    tankLitres = prefs.tankLitres,
-                    demoDriving = demoDriving,
-                    onToggleDemo = vehicle::toggleDemoDriving,
-                    modifier = Modifier.weight(0.30f),
-                )
-                Box(Modifier.weight(0.40f)) {
-                    CarSimulationWidget(
-                        speedKmh = telemetry.speedKmh,
-                        heading = heading,
-                        glow = prefs.glowIntensity,
-                    )
-                }
-                Column(Modifier.weight(0.30f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ConnCard("BLUETOOTH", bt.deviceName ?: "Device not connected",
-                        active = bt.hfpConnected || bt.a2dpConnected,
-                        detail = listOfNotNull(
-                            if (bt.hfpConnected) "Calls" else null,
-                            if (bt.a2dpConnected) "Audio" else null,
-                            bt.batteryPct?.let { "$it% batt" },
-                        ).joinToString(" · ").ifEmpty { "—" })
-                    ConnCard("CAR LINK 2.0", carLink.peer ?: "Device not connected",
-                        active = carLink.connected, detail = if (carLink.connected) "Mirroring" else "Waiting")
-                    PoiSearchBar(pois, searching, onOpen = vehicle::searchPois)
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-            VitalsStrip(
-                trip = trip,
-                t = telemetry,
-                dtc = dtc,
-                scanning = scanningDtc,
-                priceSet = prefs.fuelPriceKes > 0f,
-                onScan = vehicle::scanDtcs,
+            Speedometer(
+                speedKmh = telemetry.speedKmh,
+                limitKmh = prefs.speedLimitKmh,
+                glow = prefs.glowIntensity,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
             )
-            if (dtc.codes.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                DtcPanel(dtc)
-            }
 
-            if (nowPlaying.active) {
-                Spacer(Modifier.height(8.dp))
-                NowPlayingBar(
-                    np = nowPlaying,
-                    onPrevious = launcher::mediaPrevious,
-                    onPlayPause = launcher::mediaPlayPause,
-                    onNext = launcher::mediaNext,
-                    onGrantAccess = launcher::grantMediaAccess,
-                )
-            }
-
+            Spacer(Modifier.height(10.dp))
             Spacer(Modifier.height(8.dp))
+            NowPlayingBar(
+                np = nowPlaying,
+                onPrevious = launcher::mediaPrevious,
+                onPlayPause = launcher::mediaPlayPause,
+                onNext = launcher::mediaNext,
+                onGrantAccess = launcher::grantMediaAccess,
+            )
+
+            Spacer(Modifier.height(10.dp))
             QuickRail(onScreenOff = { screenOff = true })
 
             Spacer(Modifier.height(8.dp))
@@ -195,6 +160,12 @@ fun HomeScreen(
                 onLaunch = launcher::launch,
                 onAccessory = launcher::openAccessory,
                 onSensors = { showSensors = true; vehicle.scanSensors() },
+            )
+
+            Spacer(Modifier.height(8.dp))
+            BigHomeButton(
+                onClick = { simpleMode = false; showSensors = false },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
             } // end else (full dashboard)
         }
@@ -251,6 +222,10 @@ private fun TopStatusBar(bt: Boolean, btLabel: String, carLink: Boolean, glow: F
         StatusDot("BT", bt); Spacer(Modifier.width(12.dp))
         StatusDot("LINK", carLink); Spacer(Modifier.width(12.dp))
         StatusDot("REC", false) // recorder stub — wire to the unit's DVR broadcast when available
+        Spacer(Modifier.width(14.dp))
+        ModeChip(if (simpleMode) "FULL" else "SIMPLE") { onToggleSimple() }
+        Spacer(Modifier.width(8.dp))
+        ModeChip(if (Twende.isLight) "NIGHT" else "DAY") { Twende.isLight = !Twende.isLight }
     }
 }
 
@@ -273,7 +248,7 @@ private fun StatusDot(label: String, active: Boolean) {
 private fun ConnCard(title: String, name: String, active: Boolean, detail: String) {
     Column(Modifier.fillMaxWidth().glass(16).padding(12.dp)) {
         Text(title, fontSize = 9.sp, letterSpacing = 2.sp, color = if (active) Twende.Cyan else Twende.Dim)
-        Text(name, fontSize = 13.sp, color = Color(0xFFE8ECF1), maxLines = 1)
+        Text(name, fontSize = 13.sp, color = Twende.Ink, maxLines = 1)
         Text(detail, fontSize = 10.sp, color = Twende.Dim, maxLines = 1)
     }
 }
@@ -288,31 +263,18 @@ private fun BottomDock(
     onAccessory: (String) -> Unit,
     onSensors: () -> Unit = {},
 ) {
-    var tab by remember { mutableIntStateOf(0) }
     val state = rememberLazyListState()
 
     Column {
-        Row(Modifier.padding(start = 4.dp, bottom = 6.dp)) {
-            DockTab("COMMUTER APPS", tab == 0) { tab = 0 }
-            Spacer(Modifier.width(18.dp))
-            DockTab("ACCESSORIES", tab == 1) { tab = 1 }
-        }
+        DockTab("COMMUTER APPS", true) {}
+        Spacer(Modifier.height(6.dp))
         LazyRow(
             state = state,
             flingBehavior = rememberSnapFlingBehavior(lazyListState = state),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (tab == 0) {
-                itemsIndexed(apps, key = { i, a -> "${a.pkg}#$i" }) { index, app ->
-                    DockIcon(app, index, state, onLaunch)
-                }
-            } else {
-                item {
-                    AccessoryTile("SCAN", "Sensors", available = true, onClick = onSensors)
-                }
-                items(accessories, key = { it.id }) { acc ->
-                    AccessoryIcon(acc, onAccessory)
-                }
+            itemsIndexed(apps, key = { i, a -> "${a.pkg}#$i" }) { index, app ->
+                DockIcon(app, index, state, onLaunch)
             }
         }
     }
@@ -359,7 +321,7 @@ private fun AccessoryIcon(acc: Accessory, onOpen: (String) -> Unit) {
         Text(
             if (acc.available) acc.label else "${acc.label} —",
             fontSize = 10.sp,
-            color = if (acc.available) Color(0xFFCBD4DC) else Color(0xFF5A6472),
+            color = if (acc.available) Twende.Ink else Color(0xFF5A6472),
             maxLines = 1,
             textAlign = TextAlign.Center,
         )
@@ -396,7 +358,7 @@ private fun DockIcon(app: AppEntry, index: Int, state: androidx.compose.foundati
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Twende.Panel))
         }
         Spacer(Modifier.height(6.dp))
-        Text(app.label, fontSize = 10.sp, color = Color(0xFFCBD4DC), maxLines = 1, textAlign = TextAlign.Center)
+        Text(app.label, fontSize = 10.sp, color = Twende.Ink, maxLines = 1, textAlign = TextAlign.Center)
     }
 }
 
@@ -419,7 +381,7 @@ private fun AccessoryTile(glyph: String, label: String, available: Boolean, onCl
             contentAlignment = Alignment.Center,
         ) { Text(glyph, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = tint) }
         Spacer(Modifier.height(6.dp))
-        Text(label, fontSize = 11.sp, color = Color(0xFFCBD4DC), maxLines = 1)
+        Text(label, fontSize = 11.sp, color = Twende.Ink, maxLines = 1)
     }
 }
 
@@ -459,7 +421,7 @@ private fun SimpleMode(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(app.label, fontSize = 20.sp, fontWeight = FontWeight.Bold,
-                        color = Color(0xFFE8ECF1), maxLines = 2, textAlign = TextAlign.Center,
+                        color = Twende.Ink, maxLines = 2, textAlign = TextAlign.Center,
                         modifier = Modifier.padding(10.dp))
                 }
             }
@@ -494,10 +456,19 @@ private fun QuickRail(onScreenOff: () -> Unit) {
         QuickButton("WIFI", "Wi-Fi", Modifier.weight(1f)) {
             open(android.provider.Settings.ACTION_WIFI_SETTINGS)
         }
-        QuickButton("♪", "Music", Modifier.weight(1f)) {
+        QuickButton("▤", "Files", Modifier.weight(1f)) {
+            // The generic "music app" selector resolves to nothing on many clone
+            // units — a dead button is worse than none. Files instead, by request.
+            val pm = ctx.packageManager
+            val candidates = listOf(
+                "com.android.documentsui", "com.google.android.documentsui",
+                "com.android.fileexplorer", "com.mediatek.filemanager",
+                "com.estrongs.android.pop", "com.rhmsoft.fm",
+            )
+            val launch = candidates.firstNotNullOfOrNull { pm.getLaunchIntentForPackage(it) }
             runCatching {
                 ctx.startActivity(
-                    Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)
+                    (launch ?: Intent(Intent.ACTION_GET_CONTENT).setType("*/*"))
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 )
             }
@@ -525,5 +496,58 @@ private fun QuickButton(
         Text(glyph, fontSize = 20.sp, fontWeight = FontWeight.Bold,
             color = if (accent) Twende.Magenta else Twende.Cyan)
         Text(label, fontSize = 10.sp, color = Twende.Dim)
+    }
+}
+
+
+@Composable
+private fun ModeChip(label: String, onClick: () -> Unit) {
+    Text(
+        label, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp,
+        color = Twende.Cyan,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Twende.ButtonBg)
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    )
+}
+
+/* ---------- big centre speedometer: the home hero ---------- */
+
+@Composable
+private fun Speedometer(speedKmh: Int, limitKmh: Int, glow: Float, modifier: Modifier = Modifier) {
+    val over = limitKmh > 0 && speedKmh > limitKmh
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize().padding(10.dp)) {
+            val d = minOf(size.width, size.height)
+            val stroke = d * 0.055f
+            val arcSize = Size(d - 2 * stroke, d - 2 * stroke)
+            val topLeft = Offset((size.width - arcSize.width) / 2f, (size.height - arcSize.height) / 2f)
+            val track = Twende.Line
+            drawArc(track, 135f, 270f, false, topLeft, arcSize,
+                style = Stroke(stroke, cap = StrokeCap.Round))
+            val maxV = maxOf(limitKmh * 1.4f, 80f)
+            val frac = (speedKmh / maxV).coerceIn(0f, 1f)
+            val col = if (over) Twende.Magenta else Twende.Cyan
+            drawArc(col.copy(alpha = 0.25f + 0.75f * (0.4f + 0.6f * glow.coerceIn(0f, 1f))),
+                135f, 270f * frac, false, topLeft, arcSize,
+                style = Stroke(stroke, cap = StrokeCap.Round))
+            if (limitKmh > 0) {
+                val ang = Math.toRadians((135f + 270f * (limitKmh / maxV).coerceIn(0f, 1f)).toDouble())
+                val r = arcSize.width / 2f
+                val cxx = size.width / 2f; val cyy = size.height / 2f
+                drawLine(Twende.Magenta,
+                    Offset(cxx + (r - stroke * 1.1f) * kotlin.math.cos(ang).toFloat(),
+                           cyy + (r - stroke * 1.1f) * kotlin.math.sin(ang).toFloat()),
+                    Offset(cxx + (r + stroke * 0.35f) * kotlin.math.cos(ang).toFloat(),
+                           cyy + (r + stroke * 0.35f) * kotlin.math.sin(ang).toFloat()),
+                    strokeWidth = 4f, cap = StrokeCap.Round)
+            }
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("$speedKmh", style = neonStyle(if (over) Twende.Magenta else Twende.Cyan, 84, glow))
+            Text("km/h", fontSize = 16.sp, letterSpacing = 4.sp, color = Twende.Dim)
+        }
     }
 }
