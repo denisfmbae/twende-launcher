@@ -37,6 +37,10 @@ fun CosmicBackground(modifier: Modifier = Modifier.fillMaxSize()) {
     androidx.compose.foundation.Canvas(
         modifier.drawWithCache {
             val grid = Color(0x0E00E5FF)
+            // Reading Twende.glowLevel here (inside drawWithCache but outside onDrawBehind)
+            // registers a snapshot subscription that invalidates the cache when glow changes.
+            val hiAlpha = (0.28f + 0.25f * Twende.glowLevel).coerceIn(0f, 0.60f)
+            val loAlpha = (0.16f + 0.16f * Twende.glowLevel).coerceIn(0f, 0.42f)
             onDrawBehind {
                 drawRect(Twende.Cosmic)
                 if (Twende.isLight) {
