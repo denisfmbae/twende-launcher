@@ -59,6 +59,13 @@ import co.nedlink.twende.ui.common.BigHomeButton
 import co.nedlink.twende.ui.common.BigNavButton
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.Brush
+import kotlin.math.roundToInt
 import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 import co.nedlink.twende.ui.theme.neonStyle
@@ -114,71 +121,89 @@ fun HomeScreen(
 
     Box(Modifier.fillMaxSize()) {
         CosmicBackground()
-        Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        // Content and the volume rail are SIBLINGS in a Row, not stacked layers.
+        // The rail used to be a floating overlay, which is exactly why it landed
+        // on top of the transport buttons.
+        Row(Modifier.fillMaxSize().padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp)) {
+            Column(Modifier.weight(1f)) {
 
-            TopStatusBar(
-                bt = bt.hfpConnected || bt.a2dpConnected,
-                btLabel = bt.deviceName?.let { n -> bt.batteryPct?.let { "$n · $it%" } ?: n } ?: "Not connected",
-                carLink = carLink.connected,
-                glow = Twende.glowLevel,
-                simpleMode = simpleMode,
-                onToggleSimple = { simpleMode = !simpleMode },
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            if (simpleMode) {
-                SimpleMode(
-                    speedKmh = telemetry.speedKmh,
-                    fuelPct = telemetry.fuelPct,
-                    apps = commuter.ifEmpty { apps.take(6) },
-                    onLaunch = launcher::launch,
-                    onSensors = { showSensors = true; vehicle.scanSensors() },
-                    modifier = Modifier.weight(1f),
+                TopStatusBar(
+                    bt = bt.hfpConnected || bt.a2dpConnected,
+                    btLabel = bt.deviceName?.let { n -> bt.batteryPct?.let { "$n · $it%" } ?: n } ?: "Not connected",
+                    carLink = carLink.connected,
+                    glow = Twende.glowLevel,
+                    simpleMode = simpleMode,
+                    onToggleSimple = { simpleMode = !simpleMode },
                 )
-            } else {
 
-            Speedometer(
-                speedKmh = telemetry.speedKmh,
-                limitKmh = prefs.speedLimitKmh,
-                glow = Twende.glowLevel,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-            )
+                Spacer(Modifier.height(8.dp))
 
-            Spacer(Modifier.height(10.dp))
-            Spacer(Modifier.height(8.dp))
-            NowPlayingBar(
-                np = nowPlaying,
-                onPrevious = launcher::mediaPrevious,
-                onPlayPause = launcher::mediaPlayPause,
-                onNext = launcher::mediaNext,
-                onGrantAccess = launcher::grantMediaAccess,
-                onOpenLibrary = onOpenMusic,
-            )
+                if (simpleMode) {
+                    SimpleMode(
+                        speedKmh = telemetry.speedKmh,
+                        fuelPct = telemetry.fuelPct,
+                        apps = commuter.ifEmpty { apps.take(6) },
+                        onLaunch = launcher::launch,
+                        onSensors = { showSensors = true; vehicle.scanSensors() },
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
 
-            Spacer(Modifier.height(10.dp))
-            QuickRail(onScreenOff = { screenOff = true })
+                // ================= TOP HALF: the media stage =================
+                MediaStage(
+                    np = nowPlaying,
+                    onPrevious = launcher::mediaPrevious,
+                    onPlayPause = launcher::mediaPlayPause,
+                    onNext = launcher::mediaNext,
+                    onGrantAccess = launcher::grantMediaAccess,
+                    onOpenLibrary = onOpenMusic,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
 
-            Spacer(Modifier.height(8.dp))
-            BottomDock(
-                apps = commuter.ifEmpty { apps.take(8) },
-                accessories = accessories,
-                onLaunch = launcher::launch,
-                onAccessory = launcher::openAccessory,
-                onSensors = { showSensors = true; vehicle.scanSensors() },
-            )
+                Spacer(Modifier.height(10.dp))
 
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BigNavButton("\u25a6", "APPS", widthDp = 190, onClick = onOpenApps)
-                BigHomeButton(onClick = { simpleMode = false; showSensors = false })
-                BigNavButton("\u2699", "SETUP", widthDp = 190, onClick = onOpenSettings)
+                // ================ BOTTOM HALF: everything else ===============
+                Column(Modifier.weight(1f).fillMaxWidth()) {
+                    Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Speedometer(
+                            speedKmh = telemetry.speedKmh,
+                            limitKmh = prefs.speedLimitKmh,
+                            glow = Twende.glowLevel,
+                            live = telemetry.source.name == "ELM327",
+                            demoDriving = demoDriving,
+                            onToggleDemo = vehicle::toggleDemoDriving,
+                            modifier = Modifier.weight(0.40f).fillMaxHeight(),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(0.60f)) {
+                            QuickRail(onScreenOff = { screenOff = true })
+                            Spacer(Modifier.height(8.dp))
+                            BottomDock(
+                                apps = commuter.ifEmpty { apps.take(8) },
+                                accessories = accessories,
+                                onLaunch = launcher::launch,
+                                onAccessory = launcher::openAccessory,
+                                onSensors = { showSensors = true; vehicle.scanSensors() },
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BigNavButton("\u25a6", "APPS", widthDp = 170, onClick = onOpenApps)
+                        BigHomeButton(onClick = { simpleMode = false; showSensors = false })
+                        BigNavButton("\u2699", "SETUP", widthDp = 170, onClick = onOpenSettings)
+                    }
+                }
+                } // end else (full dashboard)
             }
-            } // end else (full dashboard)
+
+            Spacer(Modifier.width(6.dp))
+            VolumeRail(Modifier.fillMaxHeight().width(62.dp))
         }
 
         // Sensor scan overlay sits above everything.
@@ -190,8 +215,6 @@ fun HomeScreen(
                 onClose = { showSensors = false },
             )
         }
-
-        VolumeRail(Modifier.align(Alignment.CenterEnd).padding(end = 4.dp))
 
         if (screenOff) {
             Box(
@@ -529,9 +552,20 @@ private fun ModeChip(label: String, onClick: () -> Unit) {
 /* ---------- big centre speedometer: the home hero ---------- */
 
 @Composable
-private fun Speedometer(speedKmh: Int, limitKmh: Int, glow: Float, modifier: Modifier = Modifier) {
+private fun Speedometer(
+    speedKmh: Int,
+    limitKmh: Int,
+    glow: Float,
+    live: Boolean = false,
+    demoDriving: Boolean = false,
+    onToggleDemo: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val over = limitKmh > 0 && speedKmh > limitKmh
-    Box(modifier, contentAlignment = Alignment.Center) {
+    // Parked with no dongle, the needle sits at zero and looks broken. It isn't —
+    // there is simply nothing to read. Tapping the dial runs the demo sweep so the
+    // gauge can be seen working, and the label always says which of the three it is.
+    Box(modifier.clickable { onToggleDemo() }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize().padding(10.dp)) {
             val d = minOf(size.width, size.height)
             val stroke = d * 0.055f
@@ -559,8 +593,14 @@ private fun Speedometer(speedKmh: Int, limitKmh: Int, glow: Float, modifier: Mod
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("$speedKmh", style = neonStyle(if (over) Twende.Magenta else Twende.Cyan, 84, glow))
-            Text("km/h", fontSize = 16.sp, letterSpacing = 4.sp, color = Twende.Dim)
+            Text("$speedKmh", style = neonStyle(if (over) Twende.Magenta else Twende.Cyan, 72, glow))
+            Text("km/h", fontSize = 14.sp, letterSpacing = 4.sp, color = Twende.Dim)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                when { live -> "LIVE"; demoDriving -> "DEMO \u2022 tap to stop"; else -> "PARKED \u2022 tap for demo" },
+                fontSize = 10.sp, letterSpacing = 1.sp,
+                color = if (live) Twende.Cyan else Twende.Dim,
+            )
         }
     }
 }
@@ -571,22 +611,75 @@ private fun Speedometer(speedKmh: Int, limitKmh: Int, glow: Float, modifier: Mod
 private fun VolumeRail(modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
     val audio = remember {
-        runCatching { ctx.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager }.getOrNull()
-    }
-    fun adjust(dir: Int) {
         runCatching {
-            audio?.adjustStreamVolume(
-                android.media.AudioManager.STREAM_MUSIC, dir,
-                android.media.AudioManager.FLAG_SHOW_UI,
+            ctx.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+        }.getOrNull()
+    }
+    val maxVol = remember { (audio?.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) ?: 15).coerceAtLeast(1) }
+    var level by remember {
+        mutableFloatStateOf(
+            (audio?.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) ?: 0).toFloat() / maxVol
+        )
+    }
+    fun apply(frac: Float) {
+        val f = frac.coerceIn(0f, 1f)
+        level = f
+        runCatching {
+            audio?.setStreamVolume(
+                android.media.AudioManager.STREAM_MUSIC,
+                (f * maxVol).roundToInt(), 0,
             )
         }
     }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        VolButton("+") { adjust(android.media.AudioManager.ADJUST_RAISE) }
-        VolButton("\u00d7") { adjust(android.media.AudioManager.ADJUST_TOGGLE_MUTE) }
-        VolButton("\u2212") { adjust(android.media.AudioManager.ADJUST_LOWER) }
+
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("VOL", fontSize = 9.sp, letterSpacing = 2.sp, color = Twende.Dim)
+        Spacer(Modifier.height(6.dp))
+        // One continuous track: drag anywhere along it, or tap a point to jump there.
+        Box(
+            Modifier
+                .weight(1f)
+                .width(46.dp)
+                .clip(RoundedCornerShape(23.dp))
+                .background(Twende.ButtonBg)
+                .border(1.dp, Twende.Line, RoundedCornerShape(23.dp))
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { change, _ ->
+                        apply(1f - change.position.y / size.height.toFloat())
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures { o -> apply(1f - o.y / size.height.toFloat()) }
+                },
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(level.coerceIn(0.001f, 1f))
+                    .clip(RoundedCornerShape(23.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Twende.Cyan.copy(alpha = 0.85f), Twende.Cyan.copy(alpha = 0.35f))
+                        )
+                    ),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("${(level * 100).roundToInt()}%", fontSize = 11.sp, color = Twende.Ink)
+        Spacer(Modifier.height(8.dp))
+        VolButton("\u00d7") {
+            runCatching {
+                audio?.adjustStreamVolume(
+                    android.media.AudioManager.STREAM_MUSIC,
+                    android.media.AudioManager.ADJUST_TOGGLE_MUTE, 0,
+                )
+            }
+            apply(if (level > 0f) 0f else 0.4f)
+        }
     }
 }
+
 
 @Composable
 private fun VolButton(glyph: String, onClick: () -> Unit) {
