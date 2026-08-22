@@ -66,6 +66,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Brush
 import kotlin.math.roundToInt
+import co.nedlink.twende.ui.sensors.DeviceSensorPanel
 import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 import co.nedlink.twende.ui.theme.neonStyle
@@ -99,6 +100,8 @@ fun HomeScreen(
     val scanningDtc by vehicle.scanningDtc.collectAsStateWithLifecycle()
     val sensorScan by vehicle.sensorScan.collectAsStateWithLifecycle()
     val demoDriving by vehicle.demoDriving.collectAsStateWithLifecycle()
+    val deviceLive by vehicle.deviceTelemetry.collectAsStateWithLifecycle()
+    val sensorInventory by vehicle.sensorInventory.collectAsStateWithLifecycle()
     val scanningSensors by vehicle.scanningSensors.collectAsStateWithLifecycle()
     var simpleMode by rememberSaveable { mutableStateOf(false) }
     var showSensors by rememberSaveable { mutableStateOf(false) }
@@ -149,56 +152,56 @@ fun HomeScreen(
                     )
                 } else {
 
-                // ================= TOP HALF: the media stage =================
-                MediaStage(
-                    np = nowPlaying,
-                    onPrevious = launcher::mediaPrevious,
-                    onPlayPause = launcher::mediaPlayPause,
-                    onNext = launcher::mediaNext,
-                    onGrantAccess = launcher::grantMediaAccess,
-                    onOpenLibrary = onOpenMusic,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                )
+                // Media/active-app panel on the LEFT, everything else on the right.
+                Row(Modifier.weight(1f).fillMaxWidth()) {
 
-                Spacer(Modifier.height(10.dp))
+                    MediaStage(
+                        np = nowPlaying,
+                        onPrevious = launcher::mediaPrevious,
+                        onPlayPause = launcher::mediaPlayPause,
+                        onNext = launcher::mediaNext,
+                        onGrantAccess = launcher::grantMediaAccess,
+                        onOpenLibrary = onOpenMusic,
+                        modifier = Modifier.weight(0.46f).fillMaxHeight(),
+                    )
 
-                // ================ BOTTOM HALF: everything else ===============
-                Column(Modifier.weight(1f).fillMaxWidth()) {
-                    Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Speedometer(
-                            speedKmh = telemetry.speedKmh,
-                            limitKmh = prefs.speedLimitKmh,
-                            glow = Twende.glowLevel,
-                            live = telemetry.source.name == "ELM327",
-                            demoDriving = demoDriving,
-                            onToggleDemo = vehicle::toggleDemoDriving,
-                            modifier = Modifier.weight(0.40f).fillMaxHeight(),
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(Modifier.weight(0.54f).fillMaxHeight()) {
+                        // GPS speed replaces the OBD speedometer: the unit's own
+                        // receiver reports true road speed with nothing plugged in.
+                        GpsSpeedCard(
+                            live = deviceLive,
+                            onOpenSensors = { showSensors = true; vehicle.rescanDeviceSensors() },
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(0.60f)) {
-                            QuickRail(onScreenOff = { screenOff = true })
-                            Spacer(Modifier.height(8.dp))
-                            BottomDock(
-                                apps = commuter.ifEmpty { apps.take(8) },
-                                accessories = accessories,
-                                onLaunch = launcher::launch,
-                                onAccessory = launcher::openAccessory,
-                                onSensors = { showSensors = true; vehicle.scanSensors() },
-                            )
+
+                        Spacer(Modifier.height(10.dp))
+                        QuickRail(onScreenOff = { screenOff = true })
+
+                        Spacer(Modifier.height(10.dp))
+                        BottomDock(
+                            apps = commuter.ifEmpty { apps.take(8) },
+                            accessories = accessories,
+                            onLaunch = launcher::launch,
+                            onAccessory = launcher::openAccessory,
+                            onSensors = { showSensors = true; vehicle.rescanDeviceSensors() },
+                        )
+
+                        Spacer(Modifier.weight(1f))
+
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            BigNavButton("\u25a6", "APPS", widthDp = 150, onClick = onOpenApps)
+                            BigHomeButton(onClick = { simpleMode = false; showSensors = false })
+                            BigNavButton("\u2699", "SETUP", widthDp = 150, onClick = onOpenSettings)
                         }
                     }
-
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        BigNavButton("\u25a6", "APPS", widthDp = 170, onClick = onOpenApps)
-                        BigHomeButton(onClick = { simpleMode = false; showSensors = false })
-                        BigNavButton("\u2699", "SETUP", widthDp = 170, onClick = onOpenSettings)
-                    }
                 }
+
                 } // end else (full dashboard)
             }
 
@@ -208,10 +211,10 @@ fun HomeScreen(
 
         // Sensor scan overlay sits above everything.
         if (showSensors) {
-            SensorScanPanel(
-                scan = sensorScan,
-                scanning = scanningSensors,
-                onScan = vehicle::scanSensors,
+            DeviceSensorPanel(
+                inventory = sensorInventory,
+                live = deviceLive,
+                onRescan = vehicle::rescanDeviceSensors,
                 onClose = { showSensors = false },
             )
         }
@@ -552,62 +555,6 @@ private fun ModeChip(label: String, onClick: () -> Unit) {
 /* ---------- big centre speedometer: the home hero ---------- */
 
 @Composable
-private fun Speedometer(
-    speedKmh: Int,
-    limitKmh: Int,
-    glow: Float,
-    live: Boolean = false,
-    demoDriving: Boolean = false,
-    onToggleDemo: () -> Unit = {},
-    modifier: Modifier = Modifier,
-) {
-    val over = limitKmh > 0 && speedKmh > limitKmh
-    // Parked with no dongle, the needle sits at zero and looks broken. It isn't —
-    // there is simply nothing to read. Tapping the dial runs the demo sweep so the
-    // gauge can be seen working, and the label always says which of the three it is.
-    Box(modifier.clickable { onToggleDemo() }, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().padding(10.dp)) {
-            val d = minOf(size.width, size.height)
-            val stroke = d * 0.055f
-            val arcSize = Size(d - 2 * stroke, d - 2 * stroke)
-            val topLeft = Offset((size.width - arcSize.width) / 2f, (size.height - arcSize.height) / 2f)
-            val track = Twende.Line
-            drawArc(track, 135f, 270f, false, topLeft, arcSize,
-                style = Stroke(stroke, cap = StrokeCap.Round))
-            val maxV = maxOf(limitKmh * 1.4f, 80f)
-            val frac = (speedKmh / maxV).coerceIn(0f, 1f)
-            val col = if (over) Twende.Magenta else Twende.Cyan
-            drawArc(col.copy(alpha = 0.25f + 0.75f * (0.4f + 0.6f * glow.coerceIn(0f, 1f))),
-                135f, 270f * frac, false, topLeft, arcSize,
-                style = Stroke(stroke, cap = StrokeCap.Round))
-            if (limitKmh > 0) {
-                val ang = Math.toRadians((135f + 270f * (limitKmh / maxV).coerceIn(0f, 1f)).toDouble())
-                val r = arcSize.width / 2f
-                val cxx = size.width / 2f; val cyy = size.height / 2f
-                drawLine(Twende.Magenta,
-                    Offset(cxx + (r - stroke * 1.1f) * kotlin.math.cos(ang).toFloat(),
-                           cyy + (r - stroke * 1.1f) * kotlin.math.sin(ang).toFloat()),
-                    Offset(cxx + (r + stroke * 0.35f) * kotlin.math.cos(ang).toFloat(),
-                           cyy + (r + stroke * 0.35f) * kotlin.math.sin(ang).toFloat()),
-                    strokeWidth = 4f, cap = StrokeCap.Round)
-            }
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("$speedKmh", style = neonStyle(if (over) Twende.Magenta else Twende.Cyan, 72, glow))
-            Text("km/h", fontSize = 14.sp, letterSpacing = 4.sp, color = Twende.Dim)
-            Spacer(Modifier.height(6.dp))
-            Text(
-                when { live -> "LIVE"; demoDriving -> "DEMO \u2022 tap to stop"; else -> "PARKED \u2022 tap for demo" },
-                fontSize = 10.sp, letterSpacing = 1.sp,
-                color = if (live) Twende.Cyan else Twende.Dim,
-            )
-        }
-    }
-}
-
-/* ---------- volume rail: right edge, beside the (RHD) steering wheel ---------- */
-
-@Composable
 private fun VolumeRail(modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
     val audio = remember {
@@ -693,5 +640,45 @@ private fun VolButton(glyph: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(glyph, fontSize = 24.sp, fontWeight = FontWeight.Black, color = Twende.Cyan)
+    }
+}
+
+/* ---------- GPS speed: real road speed from the unit's own receiver ---------- */
+
+@Composable
+private fun GpsSpeedCard(
+    live: co.nedlink.twende.data.sensors.DeviceTelemetry,
+    onOpenSensors: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Twende.ButtonBg)
+            .border(1.dp, Twende.Line, RoundedCornerShape(16.dp))
+            .clickable { onOpenSensors() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(
+                if (live.gpsFix) "${live.gpsSpeedKmh}" else "--",
+                fontSize = 56.sp, fontWeight = FontWeight.Black, color = Twende.Cyan,
+            )
+            Text(
+                if (live.gpsFix) "km/h · GPS" else "waiting for GPS fix",
+                fontSize = 12.sp, letterSpacing = 2.sp, color = Twende.Dim,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        Column(horizontalAlignment = Alignment.End) {
+            Text("G-FORCE", fontSize = 9.sp, letterSpacing = 2.sp, color = Twende.Dim)
+            Text(
+                String.format("%.2f", live.gForce),
+                fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Twende.Ink,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text("SENSORS \u203a", fontSize = 11.sp, letterSpacing = 1.sp, color = Twende.Cyan)
+        }
     }
 }

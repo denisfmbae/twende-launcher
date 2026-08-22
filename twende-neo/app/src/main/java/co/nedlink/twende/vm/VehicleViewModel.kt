@@ -7,6 +7,9 @@ import co.nedlink.twende.data.carlink.CarLinkBridge
 import co.nedlink.twende.data.location.HeadingProvider
 import co.nedlink.twende.data.obd.ObdRepository
 import co.nedlink.twende.data.poi.PoiRepository
+import co.nedlink.twende.data.sensors.DeviceSensor
+import co.nedlink.twende.data.sensors.DeviceSensorRepository
+import co.nedlink.twende.data.sensors.DeviceTelemetry
 import co.nedlink.twende.data.prefs.PrefsRepository
 import co.nedlink.twende.data.vehicle.CarBodyRepository
 import co.nedlink.twende.data.vehicle.TripComputer
@@ -43,6 +46,7 @@ class VehicleViewModel @Inject constructor(
     private val body: CarBodyRepository,
     tripComputer: TripComputer,
     private val poiRepo: PoiRepository,
+    private val deviceSensors: DeviceSensorRepository,
 ) : ViewModel() {
 
     private fun <T> kotlinx.coroutines.flow.Flow<T>.hot(initial: T): StateFlow<T> =
@@ -55,6 +59,26 @@ class VehicleViewModel @Inject constructor(
     val prefs: StateFlow<Prefs> = prefsRepo.prefs.hot(Prefs())
     val bodyStatus: StateFlow<BodyStatus> = body.status.hot(BodyStatus())
     val trip: StateFlow<TripStats> = tripComputer.stats
+
+    /* ---- the head unit's own sensors: work with no OBD dongle attached ---- */
+    val deviceTelemetry: StateFlow<DeviceTelemetry> =
+        deviceSensors.telemetry().hot(DeviceTelemetry())
+
+    /**
+     * Inventory is read straight from SensorManager on demand. The OBD scan had
+     * to go through a bound service, and when that binder was null the button
+     * silently did nothing — this path has no such dependency, so rescan always
+     * responds.
+     */
+    val sensorInventory = MutableStateFlow<List<DeviceSensor>>(emptyList())
+
+    fun rescanDeviceSensors() {
+        sensorInventory.value = deviceSensors.inventory()
+    }
+
+    init {
+        rescanDeviceSensors()
+    }
 
     /** Only meaningful in demo mode — a stray tap must never fake a DOOR OPEN. */
     fun toggleDoor(door: Door) {
