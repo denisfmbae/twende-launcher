@@ -32,6 +32,16 @@ proguard-rules.pro
 settings.gradle.kts
 themes.xml
 === gradle assembleRelease ===
+
+Welcome to Gradle 8.7!
+
+Here are the highlights of this release:
+ - Compiling and testing with Java 22
+ - Cacheable Groovy script compilation
+ - New methods in lazy collection properties
+
+For more details see https://docs.gradle.org/8.7/release-notes.html
+
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
 Calculating task graph as no cached configuration is available for tasks: assembleRelease
@@ -40,60 +50,56 @@ Calculating task graph as no cached configuration is available for tasks: assemb
 > Task :app:preReleaseBuild UP-TO-DATE
 > Task :app:buildKotlinToolingMetadata
 > Task :app:generateReleaseResValues
-> Task :app:createReleaseCompatibleScreenManifests
 > Task :app:extractProguardFiles
-> Task :app:extractDeepLinksRelease
+> Task :app:createReleaseCompatibleScreenManifests
 > Task :app:generateReleaseResources
+> Task :app:extractDeepLinksRelease
 > Task :app:packageReleaseResources
+> Task :app:parseReleaseLocalResources
 > Task :app:mapReleaseSourceSetPaths
 > Task :app:checkReleaseAarMetadata
-> Task :app:javaPreCompileRelease
-> Task :app:parseReleaseLocalResources
 > Task :app:mergeReleaseJniLibFolders
-> Task :app:mergeReleaseArtProfile
-> Task :app:mergeReleaseNativeLibs
 > Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseArtProfile
+> Task :app:javaPreCompileRelease
+> Task :app:mergeReleaseNativeLibs
 
 > Task :app:stripReleaseDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so.
 
-> Task :app:extractReleaseNativeSymbolTables
-> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
-> Task :app:processReleaseManifest
-> Task :app:processReleaseManifestForPackage
+> Task :app:checkReleaseDuplicateClasses
 > Task :app:mergeReleaseStartupProfile
+> Task :app:extractReleaseNativeSymbolTables
 > Task :app:mergeReleaseShaders
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
-> Task :app:checkReleaseDuplicateClasses
-> Task :app:mergeReleaseAssets
-> Task :app:compressReleaseAssets
-> Task :app:processApplicationManifestReleaseForBundle
 > Task :app:extractReleaseVersionControlInfo
+> Task :app:processApplicationManifestReleaseForBundle
+> Task :app:mergeReleaseResources
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
-> Task :app:collectReleaseDependencies
 > Task :app:writeReleaseSigningConfigVersions
-> Task :app:sdkReleaseDependencyData
-> Task :app:expandReleaseL8ArtProfileWildcards
-> Task :app:mergeReleaseResources
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
 > Task :app:processReleaseResources
 > Task :app:bundleReleaseResources
-
+> Task :app:expandReleaseL8ArtProfileWildcards
 > Task :app:kspReleaseKotlin
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
-    1. Kotlin compile daemon is ready
-
 > Task :app:compileReleaseKotlin
 > Task :app:compileReleaseJavaWithJavac
 > Task :app:hiltAggregateDepsRelease
 > Task :app:hiltJavaCompileRelease
 > Task :app:processReleaseJavaRes
-> Task :app:generateReleaseLintVitalReportModel
 > Task :app:transformReleaseClassesWithAsm
-> Task :app:mergeReleaseGeneratedProguardFiles
 > Task :app:expandReleaseArtProfileWildcards
+> Task :app:mergeReleaseGeneratedProguardFiles
 > Task :app:mergeReleaseJavaResource
+> Task :app:generateReleaseLintVitalReportModel
 > Task :app:lintVitalAnalyzeRelease
 > Task :app:minifyReleaseWithR8
 > Task :app:lintVitalReportRelease
@@ -137,9 +143,9 @@ Info: Proguard configuration rule does not match anything: `-keepclassmembers cl
 > Task :app:packageRelease
 > Task :app:assembleRelease
 > Task :app:createReleaseApkListingFileRedirect
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1784545667885.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1787429097474.json
 
-BUILD SUCCESSFUL in 2m 31s
+BUILD SUCCESSFUL in 3m 33s
 56 actionable tasks: 56 executed
 Configuration cache entry stored.
 === apk search ===
