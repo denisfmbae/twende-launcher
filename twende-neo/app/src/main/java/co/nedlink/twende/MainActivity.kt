@@ -46,6 +46,15 @@ class MainActivity : ComponentActivity() {
                 add(Manifest.permission.BLUETOOTH_CONNECT)
                 add(Manifest.permission.BLUETOOTH_SCAN)
             }
+            // Media reads are runtime-gated. Without these the video and music
+            // scans quietly return an empty list, which reads as "no files"
+            // rather than "not allowed to look".
+            if (Build.VERSION.SDK_INT >= 33) {
+                add(Manifest.permission.READ_MEDIA_VIDEO)
+                add(Manifest.permission.READ_MEDIA_AUDIO)
+            } else {
+                add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
         }
         permissionLauncher.launch(wanted.toTypedArray())
     }

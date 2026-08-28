@@ -17,8 +17,8 @@ android {
         // with the unhelpful "There was a problem parsing the package" dialog.
         minSdk = 24
         targetSdk = 34
-        versionCode = 13
-        versionName = "2.6"
+        versionCode = 14
+        versionName = "2.7"
     }
 
     // Signing is driven by environment variables so CI (and your own machine) can

@@ -66,7 +66,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Brush
 import kotlin.math.roundToInt
-import co.nedlink.twende.ui.sensors.DeviceSensorPanel
+import co.nedlink.twende.ui.video.VideoPanel
 import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 import co.nedlink.twende.ui.theme.neonStyle
@@ -101,10 +101,8 @@ fun HomeScreen(
     val sensorScan by vehicle.sensorScan.collectAsStateWithLifecycle()
     val demoDriving by vehicle.demoDriving.collectAsStateWithLifecycle()
     val deviceLive by vehicle.deviceTelemetry.collectAsStateWithLifecycle()
-    val sensorInventory by vehicle.sensorInventory.collectAsStateWithLifecycle()
     val scanningSensors by vehicle.scanningSensors.collectAsStateWithLifecycle()
     var simpleMode by rememberSaveable { mutableStateOf(false) }
-    var showSensors by rememberSaveable { mutableStateOf(false) }
     var screenOff by rememberSaveable { mutableStateOf(false) }
     val activity = LocalContext.current as? Activity
     LaunchedEffect(screenOff) {
@@ -147,7 +145,7 @@ fun HomeScreen(
                         fuelPct = telemetry.fuelPct,
                         apps = commuter.ifEmpty { apps.take(6) },
                         onLaunch = launcher::launch,
-                        onSensors = { showSensors = true; vehicle.scanSensors() },
+                        onSensors = {},
                         modifier = Modifier.weight(1f),
                     )
                 } else {
@@ -155,48 +153,37 @@ fun HomeScreen(
                 // Media/active-app panel on the LEFT, everything else on the right.
                 Row(Modifier.weight(1f).fillMaxWidth()) {
 
-                    MediaStage(
-                        np = nowPlaying,
-                        onPrevious = launcher::mediaPrevious,
-                        onPlayPause = launcher::mediaPlayPause,
-                        onNext = launcher::mediaNext,
-                        onGrantAccess = launcher::grantMediaAccess,
-                        onOpenLibrary = onOpenMusic,
-                        modifier = Modifier.weight(0.46f).fillMaxHeight(),
+                    // Left, compressed: the video stage with its controls beneath.
+                    VideoPanel(
+                        modifier = Modifier.weight(0.34f).fillMaxHeight(),
                     )
 
                     Spacer(Modifier.width(12.dp))
 
-                    Column(Modifier.weight(0.54f).fillMaxHeight()) {
-                        // GPS speed replaces the OBD speedometer: the unit's own
-                        // receiver reports true road speed with nothing plugged in.
-                        GpsSpeedCard(
-                            live = deviceLive,
-                            onOpenSensors = { showSensors = true; vehicle.rescanDeviceSensors() },
-                            modifier = Modifier.fillMaxWidth(),
+                    // Right: the app surface, given the whole remaining view area.
+                    Column(Modifier.weight(0.66f).fillMaxHeight()) {
+
+                        SpeedStrip(live = deviceLive, modifier = Modifier.fillMaxWidth())
+
+                        Spacer(Modifier.height(10.dp))
+
+                        AppSurface(
+                            apps = commuter.ifEmpty { apps },
+                            onLaunch = launcher::launch,
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
                         )
 
                         Spacer(Modifier.height(10.dp))
                         QuickRail(onScreenOff = { screenOff = true })
 
                         Spacer(Modifier.height(10.dp))
-                        BottomDock(
-                            apps = commuter.ifEmpty { apps.take(8) },
-                            accessories = accessories,
-                            onLaunch = launcher::launch,
-                            onAccessory = launcher::openAccessory,
-                            onSensors = { showSensors = true; vehicle.rescanDeviceSensors() },
-                        )
-
-                        Spacer(Modifier.weight(1f))
-
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             BigNavButton("\u25a6", "APPS", widthDp = 150, onClick = onOpenApps)
-                            BigHomeButton(onClick = { simpleMode = false; showSensors = false })
+                            BigHomeButton(onClick = { simpleMode = false })
                             BigNavButton("\u2699", "SETUP", widthDp = 150, onClick = onOpenSettings)
                         }
                     }
@@ -210,15 +197,6 @@ fun HomeScreen(
         }
 
         // Sensor scan overlay sits above everything.
-        if (showSensors) {
-            DeviceSensorPanel(
-                inventory = sensorInventory,
-                live = deviceLive,
-                onRescan = vehicle::rescanDeviceSensors,
-                onClose = { showSensors = false },
-            )
-        }
-
         if (screenOff) {
             Box(
                 Modifier.fillMaxSize().background(Color.Black)
@@ -645,29 +623,96 @@ private fun VolButton(glyph: String, onClick: () -> Unit) {
 
 /* ---------- GPS speed: real road speed from the unit's own receiver ---------- */
 
+
+
+/* ---------- the app surface: fills the main view area ---------- */
+
 @Composable
-private fun GpsSpeedCard(
-    live: co.nedlink.twende.data.sensors.DeviceTelemetry,
-    onOpenSensors: () -> Unit,
+private fun AppSurface(
+    apps: List<co.nedlink.twende.model.AppEntry>,
+    onLaunch: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Column(
         modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Twende.ButtonBg)
             .border(1.dp, Twende.Line, RoundedCornerShape(16.dp))
-            .clickable { onOpenSensors() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(12.dp),
+    ) {
+        Text("APPS", fontSize = 10.sp, letterSpacing = 3.sp, color = Twende.Dim)
+        Spacer(Modifier.height(8.dp))
+        // A launcher cannot draw another app inside itself — Android blocks one
+        // app rendering another's surface — so a tap hands the whole screen over
+        // to that app instead. Tiles are sized to be hit without aiming.
+        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+            columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 132.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
+            androidx.compose.foundation.lazy.grid.itemsIndexed(
+                apps, key = { i, a -> "${a.pkg}#$i" },
+            ) { _, app ->
+                Column(
+                    Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Twende.Panel)
+                        .clickable { onLaunch(app.pkg) }
+                        .padding(vertical = 14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val icon = app.icon
+                    if (icon != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = icon.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(13.dp)),
+                        )
+                    } else {
+                        Box(
+                            Modifier.size(56.dp).clip(RoundedCornerShape(13.dp))
+                                .background(Twende.ButtonBg),
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        app.label, fontSize = 13.sp, color = Twende.Ink,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+/* ---------- GPS speed strip: true road speed, no dongle required ---------- */
+
+@Composable
+private fun SpeedStrip(
+    live: co.nedlink.twende.data.sensors.DeviceTelemetry,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Twende.ButtonBg)
+            .border(1.dp, Twende.Line, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(
+            if (live.gpsFix) "${live.gpsSpeedKmh}" else "--",
+            fontSize = 46.sp, fontWeight = FontWeight.Black, color = Twende.Cyan,
+        )
+        Spacer(Modifier.width(8.dp))
         Column {
+            Text("km/h", fontSize = 13.sp, letterSpacing = 2.sp, color = Twende.Dim)
             Text(
-                if (live.gpsFix) "${live.gpsSpeedKmh}" else "--",
-                fontSize = 56.sp, fontWeight = FontWeight.Black, color = Twende.Cyan,
-            )
-            Text(
-                if (live.gpsFix) "km/h · GPS" else "waiting for GPS fix",
-                fontSize = 12.sp, letterSpacing = 2.sp, color = Twende.Dim,
+                if (live.gpsFix) "GPS" else "no fix",
+                fontSize = 10.sp, letterSpacing = 1.sp,
+                color = if (live.gpsFix) Twende.Cyan else Twende.Dim,
             )
         }
         Spacer(Modifier.weight(1f))
@@ -675,10 +720,8 @@ private fun GpsSpeedCard(
             Text("G-FORCE", fontSize = 9.sp, letterSpacing = 2.sp, color = Twende.Dim)
             Text(
                 String.format("%.2f", live.gForce),
-                fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Twende.Ink,
+                fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Twende.Ink,
             )
-            Spacer(Modifier.height(4.dp))
-            Text("SENSORS \u203a", fontSize = 11.sp, letterSpacing = 1.sp, color = Twende.Cyan)
         }
     }
 }
