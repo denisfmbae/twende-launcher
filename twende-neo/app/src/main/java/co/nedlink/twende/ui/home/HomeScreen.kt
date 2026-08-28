@@ -67,6 +67,9 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Brush
 import kotlin.math.roundToInt
 import co.nedlink.twende.ui.video.VideoPanel
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import co.nedlink.twende.ui.theme.Twende
 import co.nedlink.twende.ui.theme.glass
 import co.nedlink.twende.ui.theme.neonStyle
@@ -629,7 +632,7 @@ private fun VolButton(glyph: String, onClick: () -> Unit) {
 
 @Composable
 private fun AppSurface(
-    apps: List<co.nedlink.twende.model.AppEntry>,
+    apps: List<AppEntry>,
     onLaunch: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -645,15 +648,13 @@ private fun AppSurface(
         // A launcher cannot draw another app inside itself — Android blocks one
         // app rendering another's surface — so a tap hands the whole screen over
         // to that app instead. Tiles are sized to be hit without aiming.
-        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-            columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(minSize = 132.dp),
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 132.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
-            androidx.compose.foundation.lazy.grid.itemsIndexed(
-                apps, key = { i, a -> "${a.pkg}#$i" },
-            ) { _, app ->
+            itemsIndexed(apps, key = { i, a -> "${a.pkg}#$i" }) { _, app ->
                 Column(
                     Modifier
                         .clip(RoundedCornerShape(14.dp))
@@ -664,7 +665,7 @@ private fun AppSurface(
                 ) {
                     val icon = app.icon
                     if (icon != null) {
-                        androidx.compose.foundation.Image(
+                        Image(
                             bitmap = icon.asImageBitmap(),
                             contentDescription = null,
                             modifier = Modifier.size(56.dp).clip(RoundedCornerShape(13.dp)),
